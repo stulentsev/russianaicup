@@ -1,0 +1,11 @@
+set xlabel "x"
+set ylabel "y"
+set key top
+set border 4095
+# set samples 25
+# set isosamples 20
+set terminal png
+
+set title "Potentials"
+set pm3d; set palette
+splot "surface_map.dat" matrix
