@@ -1,0 +1,4 @@
+#! /usr/bin/env bash
+
+rm ../solution.zip
+zip -r ../solution.zip Cargo.toml model simulation src

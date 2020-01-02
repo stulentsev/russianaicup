@@ -1,0 +1,7 @@
+.idea
+
+solution*.zip
+target/
+bins/
+
+

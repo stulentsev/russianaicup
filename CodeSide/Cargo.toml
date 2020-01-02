@@ -1,0 +1,12 @@
+[package]
+name = "aicup2019"
+version = "0.1.0"
+edition = "2018"
+
+[features]
+default = []
+
+[dependencies]
+model = { path = "model", package = "aicup2019-model" }
+trans = { path = "model/trans" }
+simulation = { path = "simulation", package = "aicup2019-simulation" }
