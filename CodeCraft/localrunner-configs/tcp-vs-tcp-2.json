@@ -1,0 +1,26 @@
+{
+  "seed": null,
+  "game": {
+    "Create": "Finals"
+  },
+  "players": [
+    {
+      "Tcp": {
+        "host": null,
+        "port": 31000,
+        "accept_timeout": null,
+        "timeout": null,
+        "token": null
+      }
+    },
+    {
+      "Tcp": {
+        "host": null,
+        "port": 31001,
+        "accept_timeout": null,
+        "timeout": null,
+        "token": null
+      }
+    }
+  ]
+}

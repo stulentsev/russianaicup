@@ -1,0 +1,46 @@
+{
+  "seed": null,
+  "game": {
+    "Create": "<%= stage %>"
+  },
+  "players": [
+    {
+      "Tcp": {
+        "host": null,
+        "port": <%= base_port + 0 %>,
+        "accept_timeout": null,
+        "timeout": null,
+        "token": null
+      }
+    },
+    <% if num_players == 4 %>
+    {
+      "Tcp": {
+        "host": null,
+        "port": <%= base_port + 1 %>,
+        "accept_timeout": null,
+        "timeout": null,
+        "token": null
+      }
+    },
+    {
+      "Tcp": {
+        "host": null,
+        "port": <%= base_port + 2 %>,
+        "accept_timeout": null,
+        "timeout": null,
+        "token": null
+      }
+    },
+    <% end %>
+    {
+      "Tcp": {
+        "host": null,
+        "port": <%= base_port + 3 %>,
+        "accept_timeout": null,
+        "timeout": null,
+        "token": null
+      }
+    }
+  ]
+}
