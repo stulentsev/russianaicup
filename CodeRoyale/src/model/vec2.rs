@@ -1,6 +1,6 @@
+use super::*;
 use core::fmt;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
-use super::*;
 
 /// 2 dimensional vector.
 #[derive(Clone, Debug)]
@@ -26,6 +26,21 @@ impl Vec2 {
         }
     }
 
+    pub fn add_x(&self, val: f64) -> Self {
+        Self {
+            x: self.x + val,
+            y: self.y,
+        }
+    }
+
+    pub fn add_y(&self, val: f64) -> Self {
+        Self {
+            x: self.x,
+            y: self.y + val,
+        }
+    }
+
+
     pub fn sub(&self, other: &Self) -> Self {
         Self {
             x: self.x - other.x,
@@ -40,10 +55,7 @@ impl Vec2 {
     }
 
     pub fn zero() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-        }
+        Self { x: 0.0, y: 0.0 }
     }
 }
 
@@ -56,10 +68,7 @@ impl trans::Trans for Vec2 {
     fn read_from(reader: &mut dyn std::io::Read) -> std::io::Result<Self> {
         let x: f64 = trans::Trans::read_from(reader)?;
         let y: f64 = trans::Trans::read_from(reader)?;
-        Ok(Self {
-            x,
-            y,
-        })
+        Ok(Self { x, y })
     }
 }
 
@@ -68,7 +77,6 @@ impl fmt::Display for Vec2 {
         write!(f, "({},{})", self.x, self.y)
     }
 }
-
 
 impl Add for Vec2 {
     type Output = Self;
