@@ -1,0 +1,22 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    json (2.6.2)
+    nokogiri (1.13.6-x86_64-linux)
+      racc (~> 1.4)
+    racc (1.6.0)
+    ruby-progressbar (1.11.0)
+
+PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  json
+  nokogiri
+  ruby-progressbar
+
+RUBY VERSION
+   ruby 3.1.2p20
+
+BUNDLED WITH
+   2.3.16

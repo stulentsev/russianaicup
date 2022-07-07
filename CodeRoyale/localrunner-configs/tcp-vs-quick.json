@@ -1,0 +1,36 @@
+{
+  "seed": null,
+  "game": {
+    "Create": {
+      "Override": {
+        "ticks_per_second": 30,
+        "bot_players": 120,
+        "continue_until": "AllDead",
+        "preset": "Round1"
+      }
+    }
+  },
+  "players": [
+    {
+      "Tcp": {
+        "host": null,
+        "port": 31000,
+        "accept_timeout": null,
+        "single_timeout": null,
+        "total_time_limit": null,
+        "token": null,
+        "run": {
+          "working_directory": "/home/sergio/projects/russianaicup/CodeRoyale",
+          "build_command": [
+            "cargo",
+            "build",
+            "--release"
+          ],
+          "run_command": [
+            "./bin/aicup2022-current"
+          ]
+        }
+      }
+    }
+  ]
+}
