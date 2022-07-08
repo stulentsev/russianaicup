@@ -36,7 +36,9 @@ impl MyStrategy {
                 .or_else(|| self.drink_shield(unit, game, &mut debug_interface))
                 .or_else(|| self.pick_up_shield(unit, game))
                 .or_else(|| self.go_to_shield(unit, game, &mut debug_interface))
-                .or_else(|| self.go_to_center_of_next_zone(unit, game, &mut debug_interface));
+                .or_else(|| self.shoot_at_enemy(unit, game, &mut debug_interface))
+                .or_else(|| self.go_to_center_of_next_zone(unit, game, &mut debug_interface))
+                .or_else(|| self.scan_perimeter(unit, game, &mut debug_interface));
 
             if let Some(order) = maybe_order {
                 orders.insert(unit.id, order);
@@ -87,10 +89,12 @@ impl MyStrategy {
         if unit.shield_potions >= self.constants.max_shield_potions_in_inventory {
             return None;
         }
+
         let nearest_potion: Option<&Loot> = game
             .loot
             .iter()
             .filter(|loot| matches!(loot.item, Item::ShieldPotions{..}))
+            .filter(|loot| loot.position.distance_to(&game.zone.current_center) <= game.zone.current_radius * 0.9)
             .min_by_key(|loot| unit.position.distance_to(&loot.position) as i32);
 
         nearest_potion.map(|potion| {
@@ -106,11 +110,37 @@ impl MyStrategy {
         })
     }
 
-    fn shoot_randomly(&self, unit: &Unit, game: &Game) -> Option<UnitOrder> {
+    fn shoot_at_enemy(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
+        if unit.weapon.is_none() {
+            return None;
+        }
+        let weapon_idx = unit.weapon.unwrap();
+        let weapon: &WeaponProperties = &self.constants.weapons[weapon_idx as usize];
+        if unit.ammo[weapon_idx as usize] <= 0 {
+            return None;
+        }
+
+        let nearest_enemy: Option<&Unit> = game
+            .units
+            .iter()
+            .filter(|u| u.player_id != game.my_id)
+            .filter(|enemy| unit.position.distance_to(&enemy.position) < weapon.projectile_life_time * weapon.projectile_speed)
+            .min_by_key(|enemy| unit.position.distance_to(&enemy.position) as i32);
+
+        nearest_enemy.map(|enemy| {
+            UnitOrder {
+                target_velocity: Vec2::zero(),
+                target_direction: enemy.position.sub(&unit.position),
+                action: Some(ActionOrder::Aim { shoot: true }),
+            }
+        })
+    }
+
+    fn scan_perimeter(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
         Some(UnitOrder {
             target_velocity: Vec2::zero(),
             target_direction: Vec2 { x: -unit.direction.y, y: unit.direction.x },
-            action: Some(ActionOrder::Aim { shoot: true }),
+            action: None,
         })
     }
 
