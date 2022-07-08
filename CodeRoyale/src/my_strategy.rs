@@ -33,9 +33,10 @@ impl MyStrategy {
             }
 
             let maybe_order = None
+                .or_else(|| self.avoid_projectiles(unit, game, &mut debug_interface))
                 .or_else(|| self.drink_shield(unit, game, &mut debug_interface))
                 .or_else(|| self.pick_up_shield(unit, game))
-                .or_else(|| self.go_to_shield(unit, game, &mut debug_interface))
+                // .or_else(|| self.go_to_shield(unit, game, &mut debug_interface))
                 .or_else(|| self.shoot_at_enemy(unit, game, &mut debug_interface))
                 .or_else(|| self.go_to_center_of_next_zone(unit, game, &mut debug_interface))
                 .or_else(|| self.scan_perimeter(unit, game, &mut debug_interface));
@@ -153,8 +154,26 @@ impl MyStrategy {
         }
         Some(UnitOrder {
             target_velocity: game.zone.next_center.sub(&unit.position),
-            target_direction: game.zone.next_center.clone(),
+            target_direction: game.zone.next_center.sub(&unit.position),
             action: None,
         })
+    }
+
+    fn avoid_projectiles(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
+        let threatening_projectiles_exist = game
+            .projectiles
+            .iter()
+            .filter(|p| p.shooter_player_id != game.my_id)
+            .any(|p| p.position.distance_to(&unit.position) < p.life_time * p.velocity.length() - self.constants.unit_radius);
+
+        if threatening_projectiles_exist {
+            Some(UnitOrder {
+                target_velocity: game.zone.next_center.sub(&unit.position),
+                target_direction: game.zone.next_center.clone(),
+                action: None,
+            })
+        } else {
+            None
+        }
     }
 }
