@@ -16,6 +16,34 @@ impl Vec2 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 
+    pub fn dot_product(&self, other: &Self) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
+
+    pub fn angle_with(&self, other: &Self) -> f64 {
+        let cos_angle = self.dot_product(other) / (self.length() * other.length());
+
+        cos_angle.acos()
+    }
+
+    pub fn angle(&self) -> f64 {
+        (self.x / self.length()).acos()
+    }
+
+    // new_angle is in rad
+    pub fn rotate(&self, new_angle: f64) -> Self {
+        // angle_rad = angle_degrees / 180.0 * std::f64::consts::PI;
+        // angle_degrees = angle_rad / std::f64::consts::PI * 180.0;
+        Self::from_length_and_angle(self.length(), self.angle() - new_angle)
+    }
+
+    pub fn from_length_and_angle(length: f64, angle: f64) -> Self {
+        Self {
+            x: length * angle.cos(),
+            y: length * angle.sin(),
+        }
+    }
+
     pub fn distance_to(&self, other: &Self) -> f64 {
         self.sub(other).length()
     }
