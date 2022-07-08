@@ -32,6 +32,8 @@ impl MyStrategy {
                 continue;
             }
 
+            self.visualize_sounds(unit, game, &mut debug_interface);
+
             let maybe_order = None
                 .or_else(|| self.avoid_projectiles(unit, game, &mut debug_interface))
                 .or_else(|| self.drink_shield(unit, game, &mut debug_interface))
@@ -174,6 +176,27 @@ impl MyStrategy {
             })
         } else {
             None
+        }
+    }
+
+    fn visualize_sounds(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) {
+        if debug_interface.is_none() {
+            return
+        }
+
+        let mut debug = debug_interface.as_mut().unwrap();
+        for sound in game.sounds.iter() {
+            let label = match sound.type_index {
+                0 => "steps",
+                1 => "wand",
+                2 => "staff",
+                3 => "bow",
+                4 => "wand hit",
+                5 => "staff hit",
+                6 => "bow hit",
+                _ => unreachable!("unexpected sound type index {}", sound.type_index)
+            };
+            debug.add_placed_text(sound.position.clone(), label.to_string(), Vec2{x: 0.5, y: 0.5}, 1.0, Color::red());
         }
     }
 }
