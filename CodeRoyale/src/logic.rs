@@ -5,6 +5,32 @@ use ai_cup_22::model::*;
 #[allow(dead_code)]
 #[allow(unused_variables)]
 impl MyStrategy {
+    pub fn get_velocity(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
+        Vec2::zero()
+    }
+
+    pub fn get_direction(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
+        let hittable_enemy = self
+            .enemy_units
+            .iter()
+            .filter(|e| e.is_hittable_by(unit, &self.constants))
+            .min_by(|e1, e2| {
+                let a1 = unit.direction.angle_with(&(e1.position - unit.position));
+                let a2 = unit.direction.angle_with(&(e2.position - unit.position));
+                a1.total_cmp(&a2)
+            });
+
+        if let Some(e) = hittable_enemy {
+            e.position - unit.position
+        } else {
+            unit.direction
+        }
+    }
+
+    pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+        None
+    }
+
     pub fn drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
         if unit.shield < self.constants.max_shield && unit.shield_potions > 0 {
             Some(UnitOrder {
@@ -66,10 +92,9 @@ impl MyStrategy {
             return None;
         }
 
-        let nearest_enemy: Option<&Unit> = game
-            .units
+        let nearest_enemy: Option<&Unit> = self
+            .enemy_units
             .iter()
-            .filter(|u| u.player_id != game.my_id)
             .filter(|enemy| enemy.is_hittable_by(unit, &self.constants))
             .filter(|enemy| unit.position.distance_to(&enemy.position) < weapon.projectile_life_time * weapon.projectile_speed)
             .min_by_key(|enemy| unit.position.distance_to(&enemy.position) as i32);

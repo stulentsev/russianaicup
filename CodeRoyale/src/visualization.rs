@@ -28,7 +28,7 @@ impl MyStrategy {
         }
 
         let unit_under_cursor = self
-            .units
+            .enemy_units
             .iter()
             .find(|u| state.cursor_world_position.distance_to(&u.position) < self.constants.unit_radius);
 

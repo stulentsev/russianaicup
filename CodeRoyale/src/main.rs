@@ -2,6 +2,7 @@ mod my_strategy;
 mod debug_interface;
 mod visualization;
 mod logic;
+mod bookkeeping;
 
 use debug_interface::DebugInterface;
 use my_strategy::MyStrategy;

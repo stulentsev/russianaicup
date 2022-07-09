@@ -1,3 +1,4 @@
+use std::f64::consts::FRAC_PI_2;
 use super::*;
 
 /// An obstacle on the map
@@ -23,7 +24,7 @@ impl Obstacle {
         let perp_radius = c.length() * angle.sin();
         perp_radius <= self.radius &&
             c.length() < p.length() &&
-            angle < std::f64::consts::FRAC_PI_2
+            angle < FRAC_PI_2
     }
 }
 
