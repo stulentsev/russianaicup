@@ -9,14 +9,14 @@ impl MyStrategy {
         Vec2::zero()
     }
 
-    pub fn get_direction(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
+    pub fn get_direction(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
         None
             .or_else(|| self.direction_hittable_enemy(unit, game, debug_interface))
             .or_else(|| self.direction_look_around(unit, game, debug_interface))
             .unwrap_or(unit.direction)
     }
 
-    fn direction_hittable_enemy(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
+    fn direction_hittable_enemy(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
         self
             .enemy_units
             .iter()
@@ -27,6 +27,10 @@ impl MyStrategy {
                 let a2 = unit.direction.angle_with(&(e2.position - unit.position));
                 a1.total_cmp(&a2)
             })
+            .and_then(|e| {
+                self.targets.entry(unit.id).or_insert(e.id);
+                Some(e)
+            })
             .map(|e| e.position - unit.position)
     }
 
@@ -35,7 +39,10 @@ impl MyStrategy {
     }
 
     pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
-        None
+        let enemy_id = self.targets.get(&unit.id)?;
+        let enemy = self.units_by_id.get(enemy_id)?;
+
+        Some(ActionOrder::Aim { shoot: true })
     }
 
     pub fn drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
@@ -163,7 +170,7 @@ impl MyStrategy {
         if obstacles_in_los.len() > 0 {
             if let Some(debug) = debug_interface.as_mut() {
                 for o in obstacles_in_los.iter() {
-                 debug.add_circle(o.position, o.radius, Color::red())
+                    debug.add_circle(o.position, o.radius, Color::red())
                 }
             }
             false
@@ -171,5 +178,4 @@ impl MyStrategy {
             true
         }
     }
-
 }

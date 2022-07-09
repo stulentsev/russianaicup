@@ -47,9 +47,9 @@ impl MyStrategy {
 
             self.visualize_sounds(unit, game, &mut debug_interface);
 
-            let target_velocity: Vec2 = self.get_velocity(unit, game, &mut debug_interface);
             let target_direction: Vec2 = self.get_direction(unit, game, &mut debug_interface);
             let action: Option<ActionOrder> = self.get_action_order(unit, game, &mut debug_interface);
+            let target_velocity: Vec2 = self.get_velocity(unit, game, &mut debug_interface);
 
             // let maybe_order = None
             //     // .or_else(|| self.avoid_projectiles(unit, game, &mut debug_interface))
