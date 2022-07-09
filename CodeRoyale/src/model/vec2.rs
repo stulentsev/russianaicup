@@ -20,6 +20,14 @@ impl Vec2 {
         self.x * other.x + self.y * other.y
     }
 
+    pub fn normalize(&self) -> Self {
+        let len = self.length();
+        Self{
+            x: self.x / len,
+            y: self.y / len,
+        }
+    }
+
     pub fn angle_with(&self, other: &Self) -> f64 {
         let cos_angle = self.dot_product(other) / (self.length() * other.length());
 
