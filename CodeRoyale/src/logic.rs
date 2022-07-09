@@ -20,7 +20,7 @@ impl MyStrategy {
         self
             .enemy_units
             .iter()
-            .filter(|e| self.unit_is_hittable_by(e, unit, &self.constants, debug_interface))
+            .filter(|e| self.unit_is_hittable_by(e, unit, &self.constants, &mut None))
             .filter(|e| e.is_within_fire_range_of(unit, &self.constants))
             .min_by(|e1, e2| {
                 let a1 = unit.direction.angle_with(&(e1.position - unit.position));
