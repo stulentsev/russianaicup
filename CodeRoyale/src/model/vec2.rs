@@ -1,5 +1,6 @@
 use super::*;
 use core::fmt;
+use std::f64::consts::PI;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// 2 dimensional vector.
@@ -22,7 +23,7 @@ impl Vec2 {
 
     pub fn normalize(&self) -> Self {
         let len = self.length();
-        Self{
+        Self {
             x: self.x / len,
             y: self.y / len,
         }
@@ -39,7 +40,7 @@ impl Vec2 {
         if self.y >= 0.0 {
             res
         } else {
-            std::f64::consts::PI * 2.0 - res
+            PI * 2.0 - res
         }
     }
 
@@ -95,6 +96,13 @@ impl Vec2 {
 
     pub fn zero() -> Self {
         Self { x: 0.0, y: 0.0 }
+    }
+
+    pub fn from_xy(x: f64, y: f64) -> Self {
+        Self {
+            x,
+            y,
+        }
     }
 }
 
