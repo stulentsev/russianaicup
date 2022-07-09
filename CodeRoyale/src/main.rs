@@ -1,5 +1,7 @@
 mod my_strategy;
 mod debug_interface;
+mod visualization;
+mod logic;
 
 use debug_interface::DebugInterface;
 use my_strategy::MyStrategy;
@@ -15,11 +17,11 @@ impl Args {
     fn parse() -> Self {
         let mut args = std::env::args();
         args.next().unwrap();
-        let host = args.next().unwrap_or("127.0.0.1".to_owned());
+        let host = args.next().unwrap_or_else(|| "127.0.0.1".to_owned());
         let port = args
             .next()
             .map_or(31001, |s| s.parse().expect("Can't parse port"));
-        let token = args.next().unwrap_or("0000000000000000".to_string());
+        let token = args.next().unwrap_or_else(|| "0000000000000000".to_owned());
         Self { host, port, token }
     }
 }

@@ -5,6 +5,7 @@ pub struct DebugInterface<'a> {
     writer: &'a mut dyn std::io::Write,
 }
 
+#[allow(dead_code)]
 impl<'a> DebugInterface<'a> {
     pub fn new(reader: &'a mut dyn std::io::Read, writer: &'a mut dyn std::io::Write) -> Self {
         Self { reader, writer }

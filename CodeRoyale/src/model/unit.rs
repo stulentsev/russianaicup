@@ -43,17 +43,9 @@ impl Unit {
             .obstacles
             .iter()
             .filter(|o| !o.can_shoot_through)
-            .filter(|o| o.intersects_with(&self.position, &unit.position))
-            .collect::<Vec<_>>();
+            .filter(|o| o.intersects_with(&self.position, &unit.position));
 
-        if obstacles_in_los.is_empty() {
-            true
-        } else {
-            // for o in obstacles_in_los.iter() {
-            //     println!("obstacle {} at {:?} blocks LoS", o.id, o.position);
-            // }
-            false
-        }
+        obstacles_in_los.count() > 0
     }
 }
 
