@@ -15,6 +15,18 @@ pub struct Obstacle {
     pub can_shoot_through: bool,
 }
 
+impl Obstacle {
+    pub fn intersects_with(&self, p0: &Vec2, p1: &Vec2) -> bool {
+        let p = p0.sub(p1);
+        let c = self.position.sub(p1);
+        let angle = p.angle_with(&c);
+        let perp_radius = c.length() * angle.sin();
+        perp_radius <= self.radius &&
+            c.length() < p.length() &&
+            angle < std::f64::consts::FRAC_PI_2
+    }
+}
+
 impl trans::Trans for Obstacle {
     fn write_to(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
         self.id.write_to(writer)?;

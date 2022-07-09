@@ -37,6 +37,26 @@ pub struct Unit {
     pub shield_potions: i32,
 }
 
+impl Unit {
+    pub fn is_hittable_by(&self, unit: &Unit, constants: &Constants) -> bool {
+        let obstacles_in_los = constants
+            .obstacles
+            .iter()
+            .filter(|o| !o.can_shoot_through)
+            .filter(|o| o.intersects_with(&self.position, &unit.position))
+            .collect::<Vec<_>>();
+
+        if obstacles_in_los.is_empty() {
+            true
+        } else {
+            // for o in obstacles_in_los.iter() {
+            //     println!("obstacle {} at {:?} blocks LoS", o.id, o.position);
+            // }
+            false
+        }
+    }
+}
+
 impl trans::Trans for Unit {
     fn write_to(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
         self.id.write_to(writer)?;

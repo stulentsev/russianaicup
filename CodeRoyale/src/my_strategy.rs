@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 use std::collections::HashMap;
-use libc::posix_fadvise;
+use std::f64::consts::FRAC_PI_2;
 
 use ai_cup_22::*;
 use ai_cup_22::debugging::Color;
@@ -10,11 +10,13 @@ use crate::debug_interface::DebugInterface;
 
 pub struct MyStrategy {
     constants: Constants,
+    units: Vec<Unit>,
+    my_units: Vec<Unit>,
 }
 
 impl MyStrategy {
     pub fn new(constants: Constants) -> Self {
-        Self { constants }
+        Self { constants, units: vec![], my_units: vec![] }
     }
     pub fn get_order(
         &mut self,
@@ -22,6 +24,9 @@ impl MyStrategy {
         mut debug_interface: Option<&mut DebugInterface>,
     ) -> Order {
         let mut orders = HashMap::new();
+
+        self.units = game.units.clone();
+        self.my_units = game.units.iter().filter(|u| u.player_id == game.my_id).cloned().collect();
 
         for unit in game.units.iter() {
             if unit.player_id != game.my_id {
@@ -35,7 +40,7 @@ impl MyStrategy {
             self.visualize_sounds(unit, game, &mut debug_interface);
 
             let maybe_order = None
-                .or_else(|| self.avoid_projectiles(unit, game, &mut debug_interface))
+                // .or_else(|| self.avoid_projectiles(unit, game, &mut debug_interface))
                 .or_else(|| self.drink_shield(unit, game, &mut debug_interface))
                 .or_else(|| self.pick_up_shield(unit, game))
                 // .or_else(|| self.go_to_shield(unit, game, &mut debug_interface))
@@ -47,14 +52,57 @@ impl MyStrategy {
                 orders.insert(unit.id, order);
             }
         }
+        if let Some(debug) = debug_interface {
+            debug.flush();
+        }
         Order {
             unit_orders: orders,
         }
     }
+
     pub fn debug_update(
         &mut self,
         debug_interface: &mut DebugInterface,
-    ) {}
+    ) {
+        debug_interface.clear();
+        debug_interface.set_auto_flush(false);
+        let state = debug_interface.get_state();
+
+        for my_unit in self.my_units.iter() {
+            if let Some(weapon_idx) = my_unit.weapon {
+                let weapon: &WeaponProperties = &self.constants.weapons[weapon_idx as usize];
+                let look_angle = my_unit.direction.angle();
+
+                debug_interface.add_pie(
+                    my_unit.position,
+                    weapon.projectile_life_time * weapon.projectile_speed,
+                    look_angle - weapon.aim_field_of_view.to_radians() / 2.0,
+                     look_angle + weapon.aim_field_of_view.to_radians() / 2.0,
+                    Color::red().a(0.1),
+                )
+            }
+        }
+
+        let unit_under_cursor = self
+            .units
+            .iter()
+            .find(|u| state.cursor_world_position.distance_to(&u.position) < self.constants.unit_radius);
+
+        if let Some(unit) = unit_under_cursor {
+            let my_units_that_see_this = self.my_units.iter().filter(|mu| unit.is_hittable_by(mu, &self.constants)).collect::<Vec<_>>();
+            // println!("enemy: {}, my units: {:?} / {}", unit.id, my_units_that_see_this.iter().map(|u| u.id).collect::<Vec<_>>(), self.my_units.len());
+            for mu in my_units_that_see_this.iter() {
+                debug_interface.add_segment(mu.position.clone(), unit.position.clone(), 0.2, Color::red());
+            }
+            let text = format!(
+                "unit {}, hittable: {}",
+                unit.id,
+                !my_units_that_see_this.is_empty()
+            );
+            debug_interface.add_placed_text(unit.position.clone(), text, Vec2::zero(), 0.7, Color::blue());
+        }
+        debug_interface.flush();
+    }
     pub fn finish(&mut self) {}
 
     fn drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
@@ -127,6 +175,7 @@ impl MyStrategy {
             .units
             .iter()
             .filter(|u| u.player_id != game.my_id)
+            .filter(|enemy| enemy.is_hittable_by(unit, &self.constants))
             .filter(|enemy| unit.position.distance_to(&enemy.position) < weapon.projectile_life_time * weapon.projectile_speed)
             .min_by_key(|enemy| unit.position.distance_to(&enemy.position) as i32);
 
@@ -181,7 +230,7 @@ impl MyStrategy {
 
     fn visualize_sounds(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) {
         if debug_interface.is_none() {
-            return
+            return;
         }
 
         let mut debug = debug_interface.as_mut().unwrap();
@@ -196,7 +245,7 @@ impl MyStrategy {
                 6 => "bow hit",
                 _ => unreachable!("unexpected sound type index {}", sound.type_index)
             };
-            debug.add_placed_text(sound.position.clone(), label.to_string(), Vec2{x: 0.5, y: 0.5}, 1.0, Color::red());
+            debug.add_placed_text(sound.position.clone(), label.to_string(), Vec2 { x: 0.5, y: 0.5 }, 1.0, Color::red());
         }
     }
 }

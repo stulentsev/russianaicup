@@ -3,7 +3,7 @@ use core::fmt;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// 2 dimensional vector.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct Vec2 {
     /// `x` coordinate of the vector
     pub x: f64,
@@ -27,13 +27,16 @@ impl Vec2 {
     }
 
     pub fn angle(&self) -> f64 {
-        (self.x / self.length()).acos()
+        let res = (self.x / self.length()).acos();
+        if self.y >= 0.0 {
+            res
+        } else {
+            std::f64::consts::PI * 2.0 - res
+        }
     }
 
     // new_angle is in rad
     pub fn rotate(&self, new_angle: f64) -> Self {
-        // angle_rad = angle_degrees / 180.0 * std::f64::consts::PI;
-        // angle_degrees = angle_rad / std::f64::consts::PI * 180.0;
         Self::from_length_and_angle(self.length(), self.angle() - new_angle)
     }
 
