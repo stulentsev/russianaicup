@@ -1,4 +1,3 @@
-use std::f64::consts::FRAC_PI_2;
 use super::*;
 
 /// An obstacle on the map
@@ -18,13 +17,7 @@ pub struct Obstacle {
 
 impl Obstacle {
     pub fn intersects_with(&self, p0: &Vec2, p1: &Vec2) -> bool {
-        let p = p0.sub(p1);
-        let c = self.position.sub(p1);
-        let angle = p.angle_with(&c);
-        let perp_radius = c.length() * angle.sin();
-        perp_radius <= self.radius &&
-            c.length() < p.length() &&
-            angle < FRAC_PI_2
+        HittableEntity::from(self).intersects_with(p0, p1)
     }
 }
 

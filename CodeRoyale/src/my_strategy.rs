@@ -46,6 +46,7 @@ impl MyStrategy {
             }
 
             self.visualize_sounds(unit, game, &mut debug_interface);
+            self.visualize_projectiles(game, &mut debug_interface);
 
             let target_direction: Vec2 = self.get_direction(unit, game, &mut debug_interface);
             let action: Option<ActionOrder> = self.get_action_order(unit, game, &mut debug_interface);

@@ -37,20 +37,9 @@ pub struct Unit {
 }
 
 impl Unit {
-    // pub fn is_hittable_by(&self, unit: &Unit, constants: &Constants) -> bool {
-    //     let obstacles_in_los = constants
-    //         .obstacles
-    //         .iter()
-    //         .filter(|o| !o.can_shoot_through)
-    //         .filter(|o| o.intersects_with(&self.position, &unit.position))
-    //         .collect::<Vec<_>>();
-    //
-    //     if obstacles_in_los.len() > 0 {
-    //         false
-    //     } else {
-    //         true
-    //     }
-    // }
+    pub fn intersects_with(&self, p0: &Vec2, p1: &Vec2) -> bool {
+        HittableEntity::from(self).intersects_with(p0, p1)
+    }
 
     pub fn is_within_fire_range_of(&self, unit: &Unit, constants: &Constants) -> bool {
         if let Some(weapon_idx) = unit.weapon {

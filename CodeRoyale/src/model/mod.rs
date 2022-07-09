@@ -36,3 +36,5 @@ mod weapon_properties;
 pub use self::weapon_properties::*;
 mod zone;
 pub use self::zone::*;
+mod hittable_entity;
+pub use self::hittable_entity::*;

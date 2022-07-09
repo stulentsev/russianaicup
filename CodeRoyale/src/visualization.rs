@@ -68,4 +68,17 @@ impl MyStrategy {
             debug.add_placed_text(sound.position, label.to_string(), Vec2 { x: 0.5, y: 0.5 }, 1.0, Color::red());
         }
     }
+
+    pub(crate) fn visualize_projectiles(&self, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) {
+        if debug_interface.is_none() {
+            return;
+        }
+
+        let debug = debug_interface.as_mut().unwrap();
+
+        for p in game.projectiles.iter() {
+            let final_position = p.position + p.velocity * p.life_time;
+            debug.add_segment(p.position, final_position, 0.1, Color::green().a(0.4))
+        }
+    }
 }

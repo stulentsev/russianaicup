@@ -6,7 +6,9 @@ use ai_cup_22::model::*;
 #[allow(unused_variables)]
 impl MyStrategy {
     pub fn get_velocity(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
-        Vec2::zero()
+        None
+            .or_else(|| self.velocity_avoid_projectiles(unit, game, debug_interface))
+            .unwrap_or(Vec2::zero())
     }
 
     pub fn get_direction(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
@@ -43,6 +45,49 @@ impl MyStrategy {
         let enemy = self.units_by_id.get(enemy_id)?;
 
         Some(ActionOrder::Aim { shoot: true })
+    }
+
+    fn velocity_avoid_projectiles(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
+        let threatening_projectiles = self.projectiles_hitting_target(game, HittableEntity::from(unit));
+
+        if threatening_projectiles.is_empty() {
+            return None;
+        }
+
+        println!("avoiding {} projectiles", threatening_projectiles.len());
+
+        let rotation_angle = (0..360)
+            .step_by(15)
+            .map(|angle_degree| (angle_degree as f64).to_radians())
+            .min_by_key(|angle| {
+                let simulated_position = unit.position +
+                    Vec2::from_xy(self.constants.max_unit_forward_speed, 0.0).rotate(-*angle);
+                let len = self.projectiles_hitting_target(
+                    game,
+                    HittableEntity::from_position_and_radius(simulated_position, self.constants.unit_radius),
+                ).len();
+                println!("position {}, angle {} degrees (distance {}), still catching {} projectiles",
+                    simulated_position,
+                    angle.to_degrees(),
+                    simulated_position.distance_to(&unit.position),
+                    len,
+                );
+                len
+            });
+
+        rotation_angle.map(|angle| Vec2::from_xy(self.constants.max_unit_forward_speed, 0.0).rotate(-angle))
+    }
+
+    fn projectiles_hitting_target<'a>(&self, game: &'a Game, hittable: HittableEntity) -> Vec<&'a Projectile> {
+        game
+            .projectiles
+            .iter()
+            .filter(|p| {
+                // TODO: check if there's an obstacle between me and projectile
+                let final_position = p.position + p.velocity * p.life_time;
+                hittable.intersects_with(&p.position, &final_position)
+            })
+            .collect::<Vec<_>>()
     }
 
     pub fn drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {

@@ -1,7 +1,7 @@
 use super::*;
 use core::fmt;
 use std::f64::consts::PI;
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 /// 2 dimensional vector.
 #[derive(Clone, Debug, Copy)]
@@ -156,5 +156,15 @@ impl SubAssign for Vec2 {
     fn sub_assign(&mut self, other: Self) {
         self.x -= other.x;
         self.y -= other.y;
+    }
+}
+
+impl Mul<f64> for Vec2 {
+    type Output = Self;
+    fn mul(self, factor: f64) -> Self::Output {
+        Self {
+            x: self.x * factor,
+            y: self.y * factor,
+        }
     }
 }
