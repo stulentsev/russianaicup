@@ -33,7 +33,7 @@ impl MyStrategy {
             .find(|u| state.cursor_world_position.distance_to(&u.position) < self.constants.unit_radius);
 
         if let Some(unit) = unit_under_cursor {
-            let my_units_that_see_this = self.my_units.iter().filter(|mu| unit.is_hittable_by(mu, &self.constants)).collect::<Vec<_>>();
+            let my_units_that_see_this = self.my_units.iter().filter(|mu| self.unit_is_hittable_by(unit, mu, &self.constants, &mut Some(debug_interface))).collect::<Vec<_>>();
             // println!("enemy: {}, my units: {:?} / {}", unit.id, my_units_that_see_this.iter().map(|u| u.id).collect::<Vec<_>>(), self.my_units.len());
             for mu in my_units_that_see_this.iter() {
                 debug_interface.add_segment(mu.position, unit.position, 0.2, Color::red());

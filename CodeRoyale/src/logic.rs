@@ -10,21 +10,28 @@ impl MyStrategy {
     }
 
     pub fn get_direction(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
-        let hittable_enemy = self
+        None
+            .or_else(|| self.direction_hittable_enemy(unit, game, debug_interface))
+            .or_else(|| self.direction_look_around(unit, game, debug_interface))
+            .unwrap_or(unit.direction)
+    }
+
+    fn direction_hittable_enemy(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
+        self
             .enemy_units
             .iter()
-            .filter(|e| e.is_hittable_by(unit, &self.constants))
+            .filter(|e| self.unit_is_hittable_by(e, unit, &self.constants, debug_interface))
+            .filter(|e| e.is_within_fire_range_of(unit, &self.constants))
             .min_by(|e1, e2| {
                 let a1 = unit.direction.angle_with(&(e1.position - unit.position));
                 let a2 = unit.direction.angle_with(&(e2.position - unit.position));
                 a1.total_cmp(&a2)
-            });
+            })
+            .map(|e| e.position - unit.position)
+    }
 
-        if let Some(e) = hittable_enemy {
-            e.position - unit.position
-        } else {
-            unit.direction
-        }
+    fn direction_look_around(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
+        Some(Vec2 { x: -unit.direction.y, y: unit.direction.x })
     }
 
     pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
@@ -95,7 +102,7 @@ impl MyStrategy {
         let nearest_enemy: Option<&Unit> = self
             .enemy_units
             .iter()
-            .filter(|enemy| enemy.is_hittable_by(unit, &self.constants))
+            .filter(|enemy| self.unit_is_hittable_by(enemy, unit, &self.constants, debug_interface))
             .filter(|enemy| unit.position.distance_to(&enemy.position) < weapon.projectile_life_time * weapon.projectile_speed)
             .min_by_key(|enemy| unit.position.distance_to(&enemy.position) as i32);
 
@@ -142,6 +149,26 @@ impl MyStrategy {
             })
         } else {
             None
+        }
+    }
+
+    pub fn unit_is_hittable_by(&self, enemy: &Unit, unit: &Unit, constants: &Constants, debug_interface: &mut Option<&mut DebugInterface>) -> bool {
+        let obstacles_in_los = constants
+            .obstacles
+            .iter()
+            .filter(|o| !o.can_shoot_through)
+            .filter(|o| o.intersects_with(&enemy.position, &unit.position))
+            .collect::<Vec<_>>();
+
+        if obstacles_in_los.len() > 0 {
+            if let Some(debug) = debug_interface.as_mut() {
+                for o in obstacles_in_los.iter() {
+                 debug.add_circle(o.position, o.radius, Color::red())
+                }
+            }
+            false
+        } else {
+            true
         }
     }
 

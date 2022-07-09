@@ -1,5 +1,4 @@
 use super::*;
-
 /// A unit
 #[derive(Clone, Debug)]
 pub struct Unit {
@@ -38,15 +37,32 @@ pub struct Unit {
 }
 
 impl Unit {
-    pub fn is_hittable_by(&self, unit: &Unit, constants: &Constants) -> bool {
-        let obstacles_in_los = constants
-            .obstacles
-            .iter()
-            .filter(|o| !o.can_shoot_through)
-            .filter(|o| o.intersects_with(&self.position, &unit.position));
+    // pub fn is_hittable_by(&self, unit: &Unit, constants: &Constants) -> bool {
+    //     let obstacles_in_los = constants
+    //         .obstacles
+    //         .iter()
+    //         .filter(|o| !o.can_shoot_through)
+    //         .filter(|o| o.intersects_with(&self.position, &unit.position))
+    //         .collect::<Vec<_>>();
+    //
+    //     if obstacles_in_los.len() > 0 {
+    //         false
+    //     } else {
+    //         true
+    //     }
+    // }
 
-        obstacles_in_los.count() > 0
+    pub fn is_within_fire_range_of(&self, unit: &Unit, constants: &Constants) -> bool {
+        if let Some(weapon_idx) = unit.weapon {
+            let weapon = &constants.weapons[weapon_idx as usize];
+            let fire_range = weapon.projectile_speed * weapon.projectile_life_time;
+            self.position.distance_to(&unit.position) <= fire_range
+        } else {
+            println!("no weapon");
+            false
+        }
     }
+
 }
 
 impl trans::Trans for Unit {
