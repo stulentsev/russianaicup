@@ -52,15 +52,6 @@ impl MyStrategy {
             let action: Option<ActionOrder> = self.get_action_order(unit, game, &mut debug_interface);
             let target_velocity: Vec2 = self.get_velocity(unit, game, &mut debug_interface);
 
-            // let maybe_order = None
-            //     // .or_else(|| self.avoid_projectiles(unit, game, &mut debug_interface))
-            //     .or_else(|| self.drink_shield(unit, game, &mut debug_interface))
-            //     .or_else(|| self.pick_up_shield(unit, game))
-            //     .or_else(|| self.go_to_shield(unit, game, &mut debug_interface))
-            //     .or_else(|| self.shoot_at_enemy(unit, game, &mut debug_interface))
-            //     .or_else(|| self.go_to_center_of_next_zone(unit, game, &mut debug_interface))
-            //     .or_else(|| self.scan_perimeter(unit, game, &mut debug_interface));
-
             orders.insert(unit.id, UnitOrder {
                 target_velocity,
                 target_direction,

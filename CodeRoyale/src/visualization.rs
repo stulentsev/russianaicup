@@ -12,20 +12,7 @@ impl MyStrategy {
         debug_interface.set_auto_flush(false);
         let state = debug_interface.get_state();
 
-        for my_unit in self.my_units.iter() {
-            if let Some(weapon_idx) = my_unit.weapon {
-                let weapon: &WeaponProperties = &self.constants.weapons[weapon_idx as usize];
-                let look_angle = my_unit.direction.angle();
-
-                debug_interface.add_pie(
-                    my_unit.position,
-                    weapon.projectile_life_time * weapon.projectile_speed,
-                    look_angle - weapon.aim_field_of_view.to_radians() / 2.0,
-                    look_angle + weapon.aim_field_of_view.to_radians() / 2.0,
-                    Color::red().a(0.1),
-                )
-            }
-        }
+        self.show_weapon_ranges(debug_interface);
 
         let unit_under_cursor = self
             .enemy_units
@@ -80,5 +67,23 @@ impl MyStrategy {
             let final_position = p.position + p.velocity * p.life_time;
             debug.add_segment(p.position, final_position, 0.1, Color::green().a(0.4))
         }
+    }
+
+    fn show_weapon_ranges(&self, debug_interface: &mut DebugInterface) {
+        for my_unit in self.my_units.iter() {
+            if let Some(weapon_idx) = my_unit.weapon {
+                let weapon: &WeaponProperties = &self.constants.weapons[weapon_idx as usize];
+                let look_angle = my_unit.direction.angle();
+
+                debug_interface.add_pie(
+                    my_unit.position,
+                    weapon.projectile_life_time * weapon.projectile_speed,
+                    look_angle - weapon.aim_field_of_view.to_radians() / 2.0,
+                    look_angle + weapon.aim_field_of_view.to_radians() / 2.0,
+                    Color::red().a(0.1),
+                )
+            }
+        }
+
     }
 }
