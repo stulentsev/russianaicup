@@ -1,6 +1,7 @@
 use ai_cup_22::debugging::Color;
 use crate::{DebugInterface, MyStrategy};
 use ai_cup_22::model::*;
+use crate::simulation::Simulator;
 
 #[allow(dead_code)]
 #[allow(unused_variables)]
@@ -54,28 +55,25 @@ impl MyStrategy {
             return None;
         }
 
-        println!("avoiding {} projectiles", threatening_projectiles.len());
+        let original_direction = if unit.velocity.length() > 0.0 { unit.velocity } else { unit.direction };
 
         let rotation_angle = (0..360)
-            .step_by(15)
+            .step_by(45)
             .map(|angle_degree| (angle_degree as f64).to_radians())
-            .min_by_key(|angle| {
-                let simulated_position = unit.position +
-                    Vec2::from_xy(self.constants.max_unit_forward_speed, 0.0).rotate(-*angle);
-                let len = self.projectiles_hitting_target(
-                    game,
-                    HittableEntity::from_position_and_radius(simulated_position, self.constants.unit_radius),
-                ).len();
-                println!("position {}, angle {} degrees (distance {}), still catching {} projectiles",
-                    simulated_position,
-                    angle.to_degrees(),
-                    simulated_position.distance_to(&unit.position),
-                    len,
-                );
-                len
+            .max_by_key(|angle| {
+                let unit_order = UnitOrder {
+                    target_velocity: Vec2::from_length_and_angle(self.constants.max_unit_forward_speed, original_direction.angle()).rotate(*angle),
+                    target_direction: unit.direction,
+                    action: None,
+                };
+                let mut simulator = Simulator::new(game, &self.constants, unit.id, unit_order);
+                let result = simulator.simulate_n_ticks(self.constants.ticks_per_second as usize);
+                result.score()
             });
 
-        rotation_angle.map(|angle| Vec2::from_xy(self.constants.max_unit_forward_speed, 0.0).rotate(-angle))
+        rotation_angle.map(|angle|  {
+            Vec2::from_length_and_angle(self.constants.max_unit_forward_speed, original_direction.angle()).rotate(angle)
+        })
     }
 
     fn projectiles_hitting_target<'a>(&self, game: &'a Game, hittable: HittableEntity) -> Vec<&'a Projectile> {

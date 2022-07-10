@@ -1,7 +1,7 @@
 use super::*;
 use core::fmt;
 use std::f64::consts::PI;
-use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 /// 2 dimensional vector.
 #[derive(Clone, Debug, Copy)]
@@ -10,6 +10,19 @@ pub struct Vec2 {
     pub x: f64,
     /// `y` coordinate of the vector
     pub y: f64,
+}
+
+impl Vec2 {
+    pub fn approx_equal(&self, other: Vec2) -> bool {
+        let factor = 10.0f64.powi(9);
+        let x1 = (self.x * factor).trunc();
+        let y1 = (self.y * factor).trunc();
+
+        let x2 = (other.x * factor).trunc();
+        let y2 = (other.y * factor).trunc();
+
+        x1 == x2 && y1 == y2
+    }
 }
 
 impl Vec2 {
@@ -44,9 +57,25 @@ impl Vec2 {
         }
     }
 
-    // new_angle is in rad
-    pub fn rotate(&self, new_angle: f64) -> Self {
-        Self::from_length_and_angle(self.length(), self.angle() - new_angle)
+    pub fn rotate(&self, angle: f64) -> Self {
+        let (sin, cos) = f64::sin_cos(angle);
+        Self {
+            x: self.x * cos - self.y * sin,
+            y: self.x * sin + self.y * cos,
+        }
+    }
+
+    pub fn clamp(self, max_len: f64) -> Self {
+        let len = self.length();
+        if len > max_len {
+            self * max_len / len
+        } else {
+            self
+        }
+    }
+
+    pub fn arg(self) -> f64 {
+        f64::atan2(self.y, self.x)
     }
 
     pub fn from_length_and_angle(length: f64, angle: f64) -> Self {
@@ -57,7 +86,7 @@ impl Vec2 {
     }
 
     pub fn distance_to(&self, other: &Self) -> f64 {
-        self.sub(other).length()
+        (*other - *self).length()
     }
     pub fn add(&self, other: &Self) -> Self {
         Self {
@@ -165,6 +194,16 @@ impl Mul<f64> for Vec2 {
         Self {
             x: self.x * factor,
             y: self.y * factor,
+        }
+    }
+}
+
+impl Div<f64> for Vec2 {
+    type Output = Self;
+    fn div(self, factor: f64) -> Self::Output {
+        Self {
+            x: self.x / factor,
+            y: self.y / factor,
         }
     }
 }

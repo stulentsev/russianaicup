@@ -3,8 +3,6 @@
   "game": {
     "Create": {
       "Override": {
-        "ticks_per_second": 30,
-        "bot_players": 120,
         "continue_until": "AllDead",
         "preset": "Round1"
       }

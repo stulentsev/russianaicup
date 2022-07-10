@@ -3,6 +3,8 @@ mod debug_interface;
 mod visualization;
 mod logic;
 mod bookkeeping;
+mod simulation;
+mod simulatable_model;
 
 use debug_interface::DebugInterface;
 use my_strategy::MyStrategy;
