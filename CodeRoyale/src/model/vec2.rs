@@ -133,6 +133,10 @@ impl Vec2 {
             y,
         }
     }
+
+    pub fn max_speed(&self) -> Self {
+        *self * 10.0
+    }
 }
 
 impl trans::Trans for Vec2 {

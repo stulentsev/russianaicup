@@ -9,6 +9,9 @@ impl MyStrategy {
     pub fn get_velocity(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
         None
             .or_else(|| self.velocity_avoid_projectiles(unit, game, debug_interface))
+            .or_else(|| self.velocity_go_to_shield(unit, game, debug_interface))
+            .or_else(|| self.velocity_go_to_ammo(unit, game, debug_interface))
+            .or_else(|| self.velocity_go_to_center_of_zone(unit, game, debug_interface))
             .unwrap_or(Vec2::zero())
     }
 
@@ -17,6 +20,13 @@ impl MyStrategy {
             .or_else(|| self.direction_hittable_enemy(unit, game, debug_interface))
             .or_else(|| self.direction_look_around(unit, game, debug_interface))
             .unwrap_or(unit.direction)
+    }
+
+    pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+        None
+            .or_else(|| self.action_shoot_at_target(unit, game, debug_interface))
+            .or_else(|| self.action_pick_up_shield(unit, game, debug_interface))
+            .or_else(|| self.action_drink_shield(unit, game, debug_interface))
     }
 
     fn direction_hittable_enemy(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
@@ -39,13 +49,6 @@ impl MyStrategy {
 
     fn direction_look_around(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
         Some(Vec2 { x: -unit.direction.y, y: unit.direction.x })
-    }
-
-    pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
-        let enemy_id = self.targets.get(&unit.id)?;
-        let enemy = self.units_by_id.get(enemy_id)?;
-
-        Some(ActionOrder::Aim { shoot: true })
     }
 
     fn velocity_avoid_projectiles(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
@@ -71,19 +74,21 @@ impl MyStrategy {
                 result.score()
             });
 
-        rotation_angle.map(|angle|  {
+        rotation_angle.map(|angle| {
             Vec2::from_length_and_angle(self.constants.max_unit_forward_speed, original_direction.angle()).rotate(angle)
         })
     }
 
     fn projectiles_hitting_target<'a>(&self, game: &'a Game, hittable: HittableEntity) -> Vec<&'a Projectile> {
-        game
-            .projectiles
-            .iter()
+        game.projectiles.iter()
             .filter(|p| {
-                // TODO: check if there's an obstacle between me and projectile
                 let final_position = p.position + p.velocity * p.life_time;
                 hittable.intersects_with(&p.position, &final_position)
+            })
+            .filter(|p| {
+                self.constants.obstacles.iter()
+                    .filter(|o| !o.can_shoot_through)
+                    .any(|o| o.intersects_with(&hittable.position, &p.position))
             })
             .collect::<Vec<_>>()
     }
@@ -100,106 +105,89 @@ impl MyStrategy {
         }
     }
 
-    pub fn pick_up_shield(&self, unit: &Unit, game: &Game) -> Option<UnitOrder> {
+    fn velocity_go_to_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
         if unit.shield_potions >= self.constants.max_shield_potions_in_inventory {
             return None;
         }
-        let nearest_potion: Option<&Loot> = game
-            .loot
-            .iter()
-            .filter(|loot| matches!(loot.item, Item::ShieldPotions{..}))
-            .find(|loot| self.constants.unit_radius >= unit.position.distance_to(&loot.position));
 
-        nearest_potion.map(|potion| {
-            UnitOrder {
-                target_velocity: Vec2::zero(),
-                target_direction: potion.position.sub(&unit.position),
-                action: Some(ActionOrder::Pickup { loot: potion.id }),
-            }
-        })
+        let predicate = |loot: &Loot| {
+            matches!(loot.item, Item::ShieldPotions{..})
+        };
+        self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
     }
-    pub fn go_to_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
+
+    fn velocity_go_to_ammo(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
+        let weapon_idx = unit.weapon? as usize;
+        let weapon = self.constants.weapons.get(weapon_idx)?;
+
+        if *unit.ammo.get(weapon_idx)? >= weapon.max_inventory_ammo {
+            return None;
+        }
+
+        let predicate = |loot: &Loot| {
+            matches!(loot.item, Item::Ammo{weapon_type_index: weapon_idx, ..})
+        };
+        self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
+    }
+
+    fn velocity_go_to_center_of_zone(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
+        Some(game.zone.next_center - unit.position)
+    }
+
+    fn velocity_go_to_loot(&self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
         if unit.shield_potions >= self.constants.max_shield_potions_in_inventory {
             return None;
         }
 
-        let nearest_potion: Option<&Loot> = game
+        let nearest_loot: Option<&Loot> = game
             .loot
             .iter()
-            .filter(|loot| matches!(loot.item, Item::ShieldPotions{..}))
+            .filter(|loot| predicate(*loot))
             .filter(|loot| loot.position.distance_to(&game.zone.current_center) <= game.zone.current_radius * 0.9)
             .min_by_key(|loot| unit.position.distance_to(&loot.position) as i32);
 
-        nearest_potion.map(|potion| {
-            if let Some(debug) = debug_interface.as_mut() {
-                debug.add_segment(unit.position, potion.position, 0.2, Color::blue());
-            }
-
-            UnitOrder {
-                target_velocity: potion.position.sub(&unit.position).mul(self.constants.max_unit_forward_speed),
-                target_direction: potion.position.sub(&unit.position),
-                action: None,
-            }
-        })
+        nearest_loot
+            .filter(|loot| loot.position.distance_to(&unit.position) > self.constants.unit_radius)
+            .map(|loot| (loot.position - unit.position).max_speed())
     }
-    pub fn shoot_at_enemy(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
-        let weapon_idx = unit.weapon?;
-        let weapon: &WeaponProperties = &self.constants.weapons[weapon_idx as usize];
-        if unit.ammo[weapon_idx as usize] <= 0 {
+
+    fn action_drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+        if unit.shield >= self.constants.max_shield {
             return None;
         }
 
-        let nearest_enemy: Option<&Unit> = self
-            .enemy_units
-            .iter()
-            .filter(|enemy| self.unit_is_hittable_by(enemy, unit, &self.constants, debug_interface))
-            .filter(|enemy| unit.position.distance_to(&enemy.position) < weapon.projectile_life_time * weapon.projectile_speed)
-            .min_by_key(|enemy| unit.position.distance_to(&enemy.position) as i32);
-
-        nearest_enemy.map(|enemy| {
-            UnitOrder {
-                target_velocity: Vec2::zero(),
-                target_direction: enemy.position.sub(&unit.position),
-                action: Some(ActionOrder::Aim { shoot: true }),
-            }
-        })
-    }
-    pub fn scan_perimeter(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
-        Some(UnitOrder {
-            target_velocity: Vec2::zero(),
-            target_direction: Vec2 { x: -unit.direction.y, y: unit.direction.x },
-            action: None,
-        })
-    }
-    pub fn go_to_center_of_next_zone(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
-        if game.zone.next_center.distance_to(&unit.position) < self.constants.unit_radius {
+        if unit.shield_potions <= 0 {
             return None;
         }
-        if let Some(debug) = debug_interface.as_mut() {
-            debug.add_segment(unit.position, game.zone.next_center, 0.2, Color::blue());
-        }
-        Some(UnitOrder {
-            target_velocity: game.zone.next_center.sub(&unit.position),
-            target_direction: game.zone.next_center.sub(&unit.position),
-            action: None,
-        })
-    }
-    pub fn avoid_projectiles(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
-        let threatening_projectiles_exist = game
-            .projectiles
-            .iter()
-            .filter(|p| p.shooter_player_id != game.my_id)
-            .any(|p| p.position.distance_to(&unit.position) < p.life_time * p.velocity.length() - self.constants.unit_radius);
 
-        if threatening_projectiles_exist {
-            Some(UnitOrder {
-                target_velocity: game.zone.next_center.sub(&unit.position),
-                target_direction: game.zone.next_center,
-                action: None,
-            })
-        } else {
-            None
+        Some(ActionOrder::UseShieldPotion {})
+    }
+
+    fn action_shoot_at_target(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+        let enemy_id = self.targets.get(&unit.id)?;
+        let enemy = self.units_by_id.get(enemy_id)?;
+
+        Some(ActionOrder::Aim { shoot: true })
+    }
+
+    fn action_pick_up_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+        if unit.shield_potions >= self.constants.max_shield_potions_in_inventory {
+            return None;
         }
+
+        let predicate = |loot: &Loot| {
+            matches!(loot.item, Item::ShieldPotions{..})
+        };
+        self.action_pick_up_loot(unit, game, &predicate, debug_interface)
+    }
+
+    fn action_pick_up_loot(&self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+        game
+            .loot
+            .iter()
+            .filter(|loot| predicate(*loot))
+            .find(|loot| loot.position.distance_to(&unit.position) <= self.constants.unit_radius)
+            .map(|loot| ActionOrder::Pickup { loot: loot.id })
     }
 
     pub fn unit_is_hittable_by(&self, enemy: &Unit, unit: &Unit, constants: &Constants, debug_interface: &mut Option<&mut DebugInterface>) -> bool {
@@ -220,5 +208,9 @@ impl MyStrategy {
         } else {
             true
         }
+    }
+
+    fn shield_potions<'a>(&self, game: &'a Game) -> impl Iterator<Item=&'a Loot> {
+        game.loot.iter().filter(|loot| matches!(loot.item, Item::ShieldPotions {..}))
     }
 }

@@ -2,8 +2,8 @@ use std::f64::consts::FRAC_PI_2;
 use crate::model::*;
 
 pub struct HittableEntity {
-    position: Vec2,
-    radius: f64,
+    pub position: Vec2,
+    pub radius: f64,
 }
 
 impl HittableEntity {
