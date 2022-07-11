@@ -45,7 +45,7 @@ impl Runner {
         let mut writer = std::io::BufWriter::new(stream_clone);
         args.token.write_to(&mut writer)?;
         1i32.write_to(&mut writer)?;
-        0i32.write_to(&mut writer)?;
+        1i32.write_to(&mut writer)?;
         1i32.write_to(&mut writer)?;
         writer.flush()?;
         Ok(Self {
@@ -88,8 +88,8 @@ impl Runner {
                     strategy.as_mut().unwrap().finish();
                     break;
                 }
-                codegame::ServerMessage::DebugUpdate {} => {
-                    strategy.as_mut().unwrap().debug_update(&mut self.debug_interface());
+                codegame::ServerMessage::DebugUpdate { displayed_tick } => {
+                    strategy.as_mut().unwrap().debug_update(displayed_tick, &mut self.debug_interface());
                     codegame::ClientMessage::DebugUpdateDone {}.write_to(&mut self.writer)?;
                     self.writer.flush()?;
                 }

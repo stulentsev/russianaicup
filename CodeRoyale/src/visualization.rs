@@ -6,6 +6,7 @@ use crate::*;
 impl MyStrategy {
     pub fn debug_update(
         &mut self,
+        displayed_tick: i32,
         debug_interface: &mut DebugInterface,
     ) {
         debug_interface.clear();
