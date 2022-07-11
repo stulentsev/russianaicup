@@ -42,10 +42,6 @@ impl MyStrategy {
                 continue;
             }
 
-            if unit.action.is_some() {
-                continue;
-            }
-
             self.visualize_sounds(unit, game, &mut debug_interface);
             self.visualize_projectiles(game, &mut debug_interface);
 
@@ -53,13 +49,16 @@ impl MyStrategy {
             let action: Option<ActionOrder> = self.get_action_order(unit, game, &mut debug_interface);
             let target_velocity: Vec2 = self.get_velocity(unit, game, &mut debug_interface);
 
+            if let Some(debug) = debug_interface.as_mut() {
+                debug.add_segment(unit.position, unit.position + target_velocity, 0.2, Color::blue());
+            };
             orders.insert(unit.id, UnitOrder {
                 target_velocity,
                 target_direction,
                 action,
             });
         }
-        if let Some(debug) = debug_interface {
+        if let Some(debug) = debug_interface.as_mut() {
             debug.flush();
         }
         Order {

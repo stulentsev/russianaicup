@@ -12,6 +12,7 @@ impl MyStrategy {
             .or_else(|| self.velocity_go_to_shield(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_ammo(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_center_of_zone(unit, game, debug_interface))
+            .map(|v| self.velocity_correction_avoid_projectiles(v, unit, game, debug_interface))
             .unwrap_or(Vec2::zero())
     }
 
@@ -52,7 +53,7 @@ impl MyStrategy {
     }
 
     fn velocity_avoid_projectiles(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2> {
-        let threatening_projectiles = self.projectiles_hitting_target(game, HittableEntity::from(unit));
+        let threatening_projectiles = self.projectiles_aimed_at_target(game, HittableEntity::from(unit));
 
         if threatening_projectiles.is_empty() {
             return None;
@@ -71,26 +72,45 @@ impl MyStrategy {
                 };
                 let mut simulator = Simulator::new(game, &self.constants, unit.id, unit_order);
                 let result = simulator.simulate_n_ticks(self.constants.ticks_per_second as usize);
-                result.score()
+                let score = result.score();
+                println!("angle {}, score {}", angle.to_degrees(), score);
+                score
             });
 
         rotation_angle.map(|angle| {
+            println!("chose angle {}", angle.to_degrees());
             Vec2::from_length_and_angle(self.constants.max_unit_forward_speed, original_direction.angle()).rotate(angle)
         })
     }
 
-    fn projectiles_hitting_target<'a>(&self, game: &'a Game, hittable: HittableEntity) -> Vec<&'a Projectile> {
+    fn velocity_correction_avoid_projectiles(&self, proposed_velocity: Vec2, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
+        let threatening_projectiles = self.projectiles_aimed_at_target(game, HittableEntity::from(unit));
+
+        if threatening_projectiles.is_empty() {
+            proposed_velocity
+        } else {
+            if let Some(debug) = debug_interface.as_mut() {
+                for p in threatening_projectiles.iter() {
+                    let final_position = p.position + p.velocity * p.life_time;
+                    debug.add_segment(p.position, final_position, 0.1, Color::red().a(0.4))
+                }
+            }
+            Vec2::zero()
+        }
+    }
+
+    fn projectiles_aimed_at_target<'a>(&self, game: &'a Game, hittable: HittableEntity) -> Vec<&'a Projectile> {
         game.projectiles.iter()
             .filter(|p| {
                 let final_position = p.position + p.velocity * p.life_time;
                 hittable.intersects_with(&p.position, &final_position)
             })
-            .filter(|p| {
-                self.constants.obstacles.iter()
-                    .filter(|o| !o.can_shoot_through)
-                    .any(|o| o.intersects_with(&hittable.position, &p.position))
-            })
-            .collect::<Vec<_>>()
+            // .filter(|p| {
+            //     self.constants.obstacles.iter()
+            //         .filter(|o| !o.can_shoot_through)
+            //         .any(|o| o.intersects_with(&hittable.position, &p.position))
+            // })
+            .collect()
     }
 
     pub fn drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<UnitOrder> {
@@ -148,7 +168,9 @@ impl MyStrategy {
 
         nearest_loot
             .filter(|loot| loot.position.distance_to(&unit.position) > self.constants.unit_radius)
-            .map(|loot| (loot.position - unit.position).max_speed())
+            .map(|loot| {
+                (loot.position - unit.position).max_speed()
+            })
     }
 
     fn action_drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
