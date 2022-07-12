@@ -12,6 +12,7 @@ pub struct MyStrategy {
     pub(crate) enemy_units: Vec<Unit>,
     pub(crate) targets: HashMap<i32, i32>,
     pub(crate) seen_loot: HashMap<i32, Loot>,
+    pub(crate) current_tick: i32,
 }
 
 impl MyStrategy {
@@ -23,6 +24,7 @@ impl MyStrategy {
             enemy_units: vec![],
             targets: HashMap::new(),
             seen_loot: HashMap::new(),
+            current_tick: 0,
         }
     }
     pub fn get_order(

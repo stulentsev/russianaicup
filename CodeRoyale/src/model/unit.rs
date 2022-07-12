@@ -52,13 +52,6 @@ impl Unit {
             false
         }
     }
-
-}
-
-impl Unit {
-    pub fn is_action_cooldown(&self) -> bool {
-        self.next_shot_tick > 0
-    }
 }
 
 impl trans::Trans for Unit {

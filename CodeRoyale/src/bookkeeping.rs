@@ -14,6 +14,8 @@ impl MyStrategy {
         self.my_units = game.units.iter().filter(|u| u.player_id == game.my_id).cloned().collect();
         self.enemy_units = game.units.iter().filter(|u| u.player_id != game.my_id).cloned().collect();
 
+        self.current_tick = game.current_tick;
+
         self.update_loot(game);
     }
 

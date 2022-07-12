@@ -51,6 +51,7 @@ impl MyStrategy {
     pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
         let order = None
             .or_else(|| self.action_pick_up_shield(unit, game, debug_interface))
+            .or_else(|| self.action_pick_up_ammo(unit, game, debug_interface))
             .or_else(|| self.action_drink_shield(unit, game, debug_interface))
             .or_else(|| self.action_shoot_at_target(unit, game, debug_interface));
 
@@ -152,7 +153,7 @@ impl MyStrategy {
     }
 
     fn velocity_go_to_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
-        if unit.is_action_cooldown() {
+        if self.is_action_cooldown(unit) {
             return None;
         }
         if unit.shield_potions >= self.constants.max_shield_potions_in_inventory {
@@ -166,7 +167,7 @@ impl MyStrategy {
     }
 
     fn velocity_go_to_ammo(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
-        if unit.is_action_cooldown() {
+        if self.is_action_cooldown(unit) {
             return None;
         }
         let weapon_idx = unit.weapon? as usize;
@@ -190,7 +191,7 @@ impl MyStrategy {
     }
 
     fn velocity_go_to_loot(&self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
-        if unit.is_action_cooldown() {
+        if self.is_action_cooldown(unit) {
             return None;
         }
         let nearest_loot: Option<&Loot> = self
@@ -261,7 +262,7 @@ impl MyStrategy {
     }
 
     fn action_pick_up_loot(&self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
-        if unit.is_action_cooldown() {
+        if self.is_action_cooldown(unit) {
             return None;
         }
         let order = self
@@ -298,4 +299,13 @@ impl MyStrategy {
             true
         }
     }
+
+    pub fn is_action_cooldown(&self, unit: &Unit) -> bool {
+        if let Some(action) = unit.action.as_ref() {
+            action.finish_tick > self.current_tick
+        } else {
+            false
+        }
+    }
+
 }
