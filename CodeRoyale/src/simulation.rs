@@ -1,5 +1,5 @@
 use std::cmp::max;
-use std::f64::consts::FRAC_PI_2;
+use std::f64::consts::{FRAC_PI_2, PI};
 use itertools::Itertools;
 use ai_cup_22::model::*;
 use crate::simulatable_model::*;
@@ -17,7 +17,7 @@ impl SimulationResult {
 
 pub struct Simulator {
     game: SimGame,
-    pub unit: SimUnit,
+    unit_id: i32,
     unit_order: UnitOrder,
     constants: Constants,
     result: SimulationResult,
@@ -27,13 +27,16 @@ impl Simulator {
     pub fn new(game: &Game, constants: &Constants, unit_id: i32, unit_order: UnitOrder) -> Self {
         Self {
             game: SimGame::new(game),
-            unit: game.units.iter().find(|u| u.id == unit_id).unwrap().into(),
+            unit_id,
             unit_order,
             constants: constants.clone(),
             result: Default::default(),
         }
     }
 
+    pub fn unit(&self) -> SimUnit {
+        self.game.units.iter().find(|u| u.id == self.unit_id).unwrap().clone()
+    }
     pub fn simulate_n_ticks(&mut self, n: usize) -> SimulationResult {
         for _ in 0..n {
             self.simulate_tick();
@@ -42,9 +45,9 @@ impl Simulator {
     }
 
     pub fn simulate_tick(&mut self) {
-        // self.simulate_rotation();
+        self.simulate_rotation();
         // self.simulate_action();
-        self.simulate_unit_movement();
+        self.simulate_movement();
         self.simulate_projectile_movement();
         // self.remove_dead_players();
         // self.regen_health();
@@ -56,21 +59,33 @@ impl Simulator {
     //     }
     // }
 
-    fn simulate_unit_movement(&mut self) {
-        let positions = self.game.units.iter().map(|unit| {
-            if unit.id == self.unit.id {
-                self.simulate_next_position(&self.unit, self.unit_order.target_velocity)
+    fn simulate_rotation(&mut self) {
+        let directions = self.game.units.iter().map(|unit| {
+            let direction = if unit.id == self.unit_id {
+                self.unit_order.target_direction
             } else {
-                // check collisions
-                unit.velocity / self.constants.ticks_per_second
-            }
+                unit.direction
+            };
+            self.simulate_next_direction(&unit, direction)
+        }).collect_vec();
+
+        for (idx, unit) in self.game.units.iter_mut().enumerate() {
+            unit.direction = *directions.get(idx).unwrap();
+        }
+    }
+
+    fn simulate_movement(&mut self) {
+        let positions = self.game.units.iter().map(|unit| {
+            let velocity = if unit.id == self.unit_id {
+                self.unit_order.target_velocity
+            } else {
+                unit.velocity
+            };
+            self.simulate_next_position(&unit, velocity)
         }).collect_vec();
 
         for (idx, unit) in self.game.units.iter_mut().enumerate() {
             unit.position = *positions.get(idx).unwrap();
-            if self.unit.id == unit.id {
-                self.unit.position = unit.position;
-            }
         }
     }
 
@@ -81,7 +96,7 @@ impl Simulator {
             if projectile.life_time > 0.0 {
                 projectile.position += projectile.velocity * delta_time;
             }
-            if self.constants.obstacles.iter().filter(|o| o.can_shoot_through ).any(|o| o.position.distance_to(&projectile.position) < o.radius) {
+            if self.constants.obstacles.iter().filter(|o| o.can_shoot_through).any(|o| o.position.distance_to(&projectile.position) < o.radius) {
                 projectile.life_time = -1.0;
                 continue;
             }
@@ -92,7 +107,7 @@ impl Simulator {
                 let shield_damage = if unit.shield > weapon.projectile_damage { weapon.projectile_damage } else { unit.shield };
                 unit.shield -= shield_damage;
                 unit.health -= weapon.projectile_damage - shield_damage;
-                if unit.player_id == self.unit.player_id {
+                if unit.player_id == self.game.my_id {
                     self.result.damage_received += weapon.projectile_damage;
                 }
             }
@@ -100,6 +115,27 @@ impl Simulator {
 
         self.game.projectiles = self.game.projectiles.iter().filter(|p| p.life_time > 0.0).cloned().collect();
         self.game.units = self.game.units.iter().filter(|u| u.health > 0.0).cloned().collect();
+    }
+
+    fn simulate_next_direction(&self, unit: &SimUnit, target_direction: Vec2) -> Vec2 {
+        if target_direction.length() < self.constants.unit_radius / 2.0 {
+            return unit.direction;
+        }
+
+        let delta_time = 1.0 / self.constants.ticks_per_second;
+        let a1 = target_direction.arg();
+        let a2 = unit.direction.arg();
+        let delta_angle = if (a1 - a2).abs() < PI { a1 - a2 } else { a2 - a1 };
+        let rotation_speed = self.constants.rotation_speed.to_radians();
+        let aim_rotation_speed = if let Some(weapon_idx) = unit.weapon {
+            self.constants.weapons[weapon_idx as usize].aim_rotation_speed.to_radians()
+        } else {
+            rotation_speed
+        };
+        let rotation_cap = (rotation_speed - (rotation_speed - aim_rotation_speed) * unit.aim) * delta_time;
+        let turn_this_tick = delta_angle.clamp(-rotation_cap, rotation_cap);
+
+        unit.direction.rotate(turn_this_tick)
     }
 
     fn simulate_next_position(&self, unit: &SimUnit, target_velocity: Vec2) -> Vec2 {

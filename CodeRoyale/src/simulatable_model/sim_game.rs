@@ -2,6 +2,7 @@ use crate::model::{Game, Unit, Projectile};
 use super::*;
 
 pub struct SimGame {
+    pub my_id: i32,
     pub units: Vec<SimUnit>,
     pub projectiles: Vec<SimProjectile>,
 }
@@ -9,6 +10,7 @@ pub struct SimGame {
 impl SimGame {
     pub fn new(game: &Game) -> Self {
         Self {
+            my_id: game.my_id,
             units: game.units.iter().map(|u| u.into()).collect(),
             projectiles: game.projectiles.iter().map(|p| p.into()).collect(),
         }
