@@ -49,6 +49,9 @@ impl MyStrategy {
     }
 
     pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+        if self.is_action_cooldown(unit) {
+            return None
+        }
         let order = None
             .or_else(|| self.action_pick_up_shield(unit, game, debug_interface))
             .or_else(|| self.action_pick_up_ammo(unit, game, debug_interface))
