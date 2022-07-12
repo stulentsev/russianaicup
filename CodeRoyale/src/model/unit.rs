@@ -55,6 +55,12 @@ impl Unit {
 
 }
 
+impl Unit {
+    pub fn is_action_cooldown(&self) -> bool {
+        self.next_shot_tick > 0
+    }
+}
+
 impl trans::Trans for Unit {
     fn write_to(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
         self.id.write_to(writer)?;

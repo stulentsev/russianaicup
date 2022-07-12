@@ -5,6 +5,7 @@ mod logic;
 mod bookkeeping;
 mod simulation;
 mod simulatable_model;
+mod visibility;
 
 use debug_interface::DebugInterface;
 use my_strategy::MyStrategy;

@@ -23,9 +23,7 @@ impl Vec2 {
 
         x1 == x2 && y1 == y2
     }
-}
 
-impl Vec2 {
     pub fn length(&self) -> f64 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
@@ -69,6 +67,15 @@ impl Vec2 {
         let len = self.length();
         if len > max_len {
             self * max_len / len
+        } else {
+            self
+        }
+    }
+
+    pub fn clamp_min(self, min_len: f64) -> Self {
+        let len = self.length();
+        if len < min_len {
+            self * min_len / len
         } else {
             self
         }
@@ -136,6 +143,10 @@ impl Vec2 {
 
     pub fn max_speed(&self) -> Self {
         *self * 10.0
+    }
+
+    pub fn to_short_string(&self) -> String {
+        format!("({:.2},{:.2})", self.x, self.y)
     }
 }
 

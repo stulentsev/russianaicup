@@ -11,6 +11,7 @@ pub struct MyStrategy {
     pub(crate) my_units: Vec<Unit>,
     pub(crate) enemy_units: Vec<Unit>,
     pub(crate) targets: HashMap<i32, i32>,
+    pub(crate) seen_loot: HashMap<i32, Loot>,
 }
 
 impl MyStrategy {
@@ -21,6 +22,7 @@ impl MyStrategy {
             my_units: vec![],
             enemy_units: vec![],
             targets: HashMap::new(),
+            seen_loot: HashMap::new(),
         }
     }
     pub fn get_order(
@@ -33,9 +35,23 @@ impl MyStrategy {
             debug.set_auto_flush(false);
         }
 
+
         let mut orders = HashMap::new();
 
         self.rebuild_indexes(game);
+
+        if let Some(debug) = debug_interface.as_mut() {
+            for unit in self.my_units.iter() {
+                let text = match unit.action {
+                    Some(Action{action_type: ActionType::Looting, ..}) => Some("looting"),
+                    Some(Action{action_type: ActionType::UseShieldPotion, ..}) => Some("drinking shield"),
+                    _ => None,
+                };
+                if let Some(t) = text {
+                    self.place_label(unit.position, t.to_string(), 3, &mut debug_interface);
+                }
+            }
+        }
 
         for unit in game.units.iter() {
             if unit.player_id != game.my_id {

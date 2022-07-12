@@ -9,6 +9,7 @@ pub struct Loot {
     pub position: model::Vec2,
     /// Item
     pub item: model::Item,
+    pub seen_on_tick: i32,
 }
 
 impl trans::Trans for Loot {
@@ -26,6 +27,7 @@ impl trans::Trans for Loot {
             id,
             position,
             item,
+            seen_on_tick: -1,
         })
     }
 }

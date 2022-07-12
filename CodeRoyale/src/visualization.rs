@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use ai_cup_22::debugging::*;
 use ai_cup_22::model::*;
 use crate::*;
@@ -13,7 +14,8 @@ impl MyStrategy {
         debug_interface.set_auto_flush(false);
         let state = debug_interface.get_state();
 
-        self.show_weapon_ranges(debug_interface);
+        // self.show_weapon_ranges(debug_interface);
+        // self.show_vision_ranges(debug_interface);
 
         let unit_under_cursor = self
             .enemy_units
@@ -21,7 +23,7 @@ impl MyStrategy {
             .find(|u| state.cursor_world_position.distance_to(&u.position) < self.constants.unit_radius);
 
         if let Some(unit) = unit_under_cursor {
-            let my_units_that_see_this = self.my_units.iter().filter(|mu| self.unit_is_hittable_by(unit, mu, &self.constants, &mut Some(debug_interface))).collect::<Vec<_>>();
+            let my_units_that_see_this = self.my_units.iter().filter(|mu| self.unit_is_hittable_by(unit, mu, &self.constants, &mut Some(debug_interface))).collect_vec();
             // println!("enemy: {}, my units: {:?} / {}", unit.id, my_units_that_see_this.iter().map(|u| u.id).collect::<Vec<_>>(), self.my_units.len());
             for mu in my_units_that_see_this.iter() {
                 debug_interface.add_segment(mu.position, unit.position, 0.2, Color::red());
@@ -85,6 +87,19 @@ impl MyStrategy {
                 )
             }
         }
+    }
 
+    pub fn show_vision_ranges(&self, debug_interface: &mut DebugInterface) {
+        for my_unit in self.my_units.iter() {
+            let sector = self.unit_visibility_sector(my_unit);
+            debug_interface.add_pie(sector.position, sector.radius, sector.start_angle, sector.end_angle, Color::green().a(0.3));
+        }
+    }
+
+    pub fn place_label(&self, position: Vec2, text: String, line: usize, debug_interface: &mut Option<&mut DebugInterface>) {
+        let offset_y = line as f64 * 0.5 - 2.0;
+        if let Some(debug) = debug_interface.as_mut() {
+            debug.add_placed_text(position, text, Vec2{x: 0.0, y: offset_y}, 1.3, Color::blue());
+        }
     }
 }
