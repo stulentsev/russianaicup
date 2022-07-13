@@ -131,12 +131,12 @@ impl MyStrategy {
         if threatening_projectiles.is_empty() {
             proposed_velocity
         } else {
-            if let Some(debug) = debug_interface.as_mut() {
-                for p in threatening_projectiles.iter() {
-                    let final_position = p.position + p.velocity * p.life_time;
-                    debug.add_segment(p.position, final_position, 0.1, Color::red().a(0.4))
-                }
-            }
+            // if let Some(debug) = debug_interface.as_mut() {
+            //     for p in threatening_projectiles.iter() {
+            //         let final_position = p.position + p.velocity * p.life_time;
+            //         debug.add_segment(p.position, final_position, 0.1, Color::red().a(0.4))
+            //     }
+            // }
             Vec2::zero()
         }
     }
