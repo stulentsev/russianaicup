@@ -85,7 +85,9 @@ impl Simulator {
         }).collect_vec();
 
         for (idx, unit) in self.game.units.iter_mut().enumerate() {
-            unit.position = *positions.get(idx).unwrap();
+            let (v, p) = *positions.get(idx).unwrap();
+            unit.position = p;
+            unit.velocity = v;
         }
     }
 
@@ -138,17 +140,16 @@ impl Simulator {
         unit.direction.rotate(turn_this_tick)
     }
 
-    fn simulate_next_position(&self, unit: &SimUnit, target_velocity: Vec2) -> Vec2 {
+    fn simulate_next_position(&self, unit: &SimUnit, mut target_velocity: Vec2) -> (Vec2, Vec2) {
         let delta_time = 1.0 / self.constants.ticks_per_second;
-        let delta_acceleration = (target_velocity.length() - unit.velocity.length()).clamp(0.0, self.constants.unit_acceleration * delta_time);
 
         let current_speed = unit.velocity.length();
-        let target_speed = self.constants.max_unit_forward_speed;
+        let target_speed = self.max_speed_for_unit(unit, target_velocity);
+        target_velocity = target_velocity.clamp(target_speed);
 
-        let velocity = Vec2::from_length_and_angle(
-            (current_speed + delta_acceleration).clamp(0.0, target_speed),
-            target_velocity.angle(),
-        );
+        let delta_velocity = (target_velocity - unit.velocity).clamp(self.constants.unit_acceleration * delta_time);
+
+        let velocity = unit.velocity + delta_velocity;
         let mut position = unit.position + velocity * delta_time;
         let collision = self.constants.obstacles.iter().find(|o| {
             o.position.distance_to(&position) <= o.radius + self.constants.unit_radius
@@ -170,6 +171,59 @@ impl Simulator {
             let tangential_velocity = Vec2::from_length_and_angle(movement_left * angle.sin(), (velocity - velocity_correction).angle());
             position += tangential_velocity;
         }
-        position
+        (velocity, position)
     }
+
+    fn max_speed_for_unit(&self, unit: &SimUnit, target_velocity: Vec2) -> f64 {
+        if unit.remaining_spawn_time.is_some() {
+            return self.constants.spawn_movement_speed;
+        } else {
+            let aim_movement_speed_modifier = if let Some(weapon_idx) = unit.weapon {
+                self.constants.weapons[weapon_idx as usize].aim_movement_speed_modifier
+            } else {
+                1.0
+            };
+            let aim = unit.aim;
+
+            let max_unit_forward_speed = self.constants.max_unit_forward_speed * (1.0 - (1.0 - aim_movement_speed_modifier) * aim);
+            let max_unit_backward_speed = self.constants.max_unit_backward_speed * (1.0 - (1.0 - aim_movement_speed_modifier) * aim);
+
+            let d = (max_unit_forward_speed - max_unit_backward_speed) / 2.0;
+            let r = (max_unit_forward_speed + max_unit_backward_speed) / 2.0;
+
+            let orig_v = target_velocity;
+            let offset = unit.direction;
+            // println!("tick {} targ_v angle {}, dir angle {}", self.game.current_tick, orig_v, offset);
+
+            let angle_a = (offset.arg() - orig_v.arg()).abs();
+            if f64_approx_eq(angle_a, 0.0) {
+                return max_unit_forward_speed
+            } else if f64_approx_eq(angle_a,PI) {
+                return max_unit_backward_speed
+            }
+
+            // println!("angle_a {}", angle_a.to_degrees());
+            if angle_a.is_nan() {
+                println!("offset: {}, orig_v: {}", offset, orig_v);
+            }
+
+            let sin_b = d * angle_a.sin() / r;
+            let angle_b = sin_b.asin();
+            // println!("angle_b {}", angle_b.to_degrees() );
+
+            let angle_c = PI - angle_a - angle_b;
+            // println!("angle_c {}", angle_c.to_degrees());
+
+            let v_len = r * angle_c.sin() / angle_a.sin();
+            // println!("v_len {}", v_len);
+
+            v_len
+        }
+    }
+
 }
+pub fn f64_approx_eq(left: f64, right: f64) -> bool {
+    let factor = 10f64.powi(7);
+    (left * factor).trunc() == (right * factor).trunc()
+}
+
