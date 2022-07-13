@@ -66,7 +66,7 @@ impl MyStrategy {
 
         let debug = debug_interface.as_mut().unwrap();
 
-        for p in game.projectiles.iter() {
+        for p in self.seen_projectiles.values() {
             let final_position = p.position + p.velocity * p.life_time;
             debug.add_segment(p.position, final_position, 0.1, Color::green().a(0.4))
         }

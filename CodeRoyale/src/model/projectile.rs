@@ -17,6 +17,8 @@ pub struct Projectile {
     pub velocity: model::Vec2,
     /// Left time of projectile's life
     pub life_time: f64,
+
+    pub seen_on_tick: i32,
 }
 
 impl trans::Trans for Projectile {
@@ -46,6 +48,7 @@ impl trans::Trans for Projectile {
             position,
             velocity,
             life_time,
+            seen_on_tick: -1,
         })
     }
 }

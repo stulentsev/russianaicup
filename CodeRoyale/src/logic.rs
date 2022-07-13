@@ -141,8 +141,8 @@ impl MyStrategy {
         }
     }
 
-    fn projectiles_aimed_at_target<'a>(&self, game: &'a Game, hittable: HittableEntity) -> Vec<&'a Projectile> {
-        game.projectiles.iter()
+    fn projectiles_aimed_at_target(&self, game: &Game, hittable: HittableEntity) -> Vec<&Projectile> {
+        self.seen_projectiles.values()
             .filter(|p| {
                 let final_position = p.position + p.velocity * p.life_time;
                 hittable.intersects_with(&p.position, &final_position)

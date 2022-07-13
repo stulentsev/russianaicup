@@ -13,6 +13,7 @@ pub struct MyStrategy {
     pub(crate) enemy_units: Vec<Unit>,
     pub(crate) targets: HashMap<i32, i32>,
     pub(crate) seen_loot: HashMap<i32, Loot>,
+    pub(crate) seen_projectiles: HashMap<i32, Projectile>,
     pub(crate) current_tick: i32,
     next_positions: HashMap<i32, (Vec2, Vec2, Vec2)>,
 }
@@ -26,6 +27,7 @@ impl MyStrategy {
             enemy_units: vec![],
             targets: HashMap::new(),
             seen_loot: HashMap::new(),
+            seen_projectiles: HashMap::new(),
             current_tick: 0,
             next_positions: HashMap::new(),
         }
@@ -119,6 +121,7 @@ impl MyStrategy {
                 target_direction,
                 action,
             };
+
             let mut simulation = Simulator::new(game, &self.constants, unit.id, unit_order.clone());
             simulation.simulate_tick();
             let sim_unit = simulation.unit();

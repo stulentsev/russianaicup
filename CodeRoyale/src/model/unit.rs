@@ -35,6 +35,8 @@ pub struct Unit {
     pub ammo: Vec<i32>,
     /// Number of shield potions in inventory
     pub shield_potions: i32,
+
+    pub seen_on_tick: i32,
 }
 
 impl Unit {
@@ -108,6 +110,7 @@ impl trans::Trans for Unit {
             next_shot_tick,
             ammo,
             shield_potions,
+            seen_on_tick: -1,
         })
     }
 }

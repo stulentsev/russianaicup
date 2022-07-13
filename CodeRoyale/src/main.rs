@@ -6,6 +6,8 @@ mod bookkeeping;
 mod simulation;
 mod simulatable_model;
 mod visibility;
+mod basic_game_entity;
+pub use basic_game_entity::*;
 
 use debug_interface::DebugInterface;
 use my_strategy::MyStrategy;

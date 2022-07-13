@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use itertools::Itertools;
 use ai_cup_22::model::*;
-use crate::MyStrategy;
+use crate::{BasicGameEntity, MyStrategy};
 
 impl MyStrategy {
     pub(crate) fn rebuild_indexes(&mut self, game: &Game) {
@@ -17,33 +17,52 @@ impl MyStrategy {
         self.current_tick = game.current_tick;
 
         self.update_loot(game);
+        self.update_projectiles(game);
     }
 
     fn update_loot(&mut self, game: &Game) {
-        let visibility_sectors = self.my_units.iter().map(|unit| self.unit_visibility_sector(unit)).collect_vec();
-        let loot_by_id = game.loot.iter().map(|loot| (loot.id, loot)).collect::<HashMap<_, _>>();
-        // prune items no longer there
-        let loot_ids_to_prune = self.seen_loot.values()
-            .filter(|loot| { // only currently visible loot
-                let visible_at_the_moment = visibility_sectors.iter().any(|sec| sec.cover_point(loot.position));
-                let too_old = game.current_tick - loot.seen_on_tick > 50;
-                too_old || visible_at_the_moment && !loot_by_id.contains_key(&loot.id)
-            })
-            .map(|loot| loot.id)
-            .collect_vec();
+        self.seen_loot = self.update_seen_items(&self.seen_loot, &game.loot, game.current_tick);
+    }
 
-        for id in loot_ids_to_prune.iter() {
-            self.seen_loot.remove(id);
+    fn update_projectiles(&mut self, game: &Game) {
+        self.seen_projectiles = self.update_seen_items(&self.seen_projectiles, &game.projectiles, game.current_tick);
+
+        for visible_projectile in game.projectiles.iter() {
+            self.seen_projectiles.entry(visible_projectile.id())
+                .and_modify(|item| {
+                    item.life_time = visible_projectile.life_time;
+                    item.position = visible_projectile.position;
+                });
         }
+    }
 
-        for maybe_new_loot in game.loot.iter() {
-            self.seen_loot.entry(maybe_new_loot.id)
-                .and_modify(|loot| loot.seen_on_tick = game.current_tick)
+    fn update_seen_items<T: BasicGameEntity + Clone>(&self, source: &HashMap<i32, T>, new_items: &[T], current_tick: i32) -> HashMap<i32, T> {
+        let visibility_sectors = self.my_units.iter().map(|unit| self.unit_visibility_sector(unit)).collect_vec();
+        let item_by_id = source.iter().map(|(id, item)| (item.id(), item)).collect::<HashMap<_, _>>();
+        // prune items no longer there
+        let mut seen_items: HashMap<i32, T> = source.iter()
+            .filter(|(id, item)| { // only currently visible loot
+                let visible_at_the_moment = visibility_sectors.iter().any(|sec| sec.cover_point(item.position()));
+                if visible_at_the_moment {
+                    item_by_id.contains_key(&item.id())
+                } else {
+                    item.is_still_relevant(current_tick)
+                }
+            })
+            .map(|(id, item)| (*id, item.clone()))
+            .collect();
+
+
+        for visible_item in new_items.iter() {
+            seen_items.entry(visible_item.id())
+                .and_modify(|item| item.mark_seen(current_tick))
                 .or_insert_with(|| {
-                    let mut new_loot = maybe_new_loot.clone();
-                    new_loot.seen_on_tick = game.current_tick;
+                    let mut new_loot = visible_item.clone();
+                    new_loot.mark_seen(current_tick);
                     new_loot
                 });
         }
+
+        seen_items
     }
 }
