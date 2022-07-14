@@ -39,6 +39,13 @@ pub struct Unit {
     pub seen_on_tick: i32,
 }
 
+pub enum LootPriority {
+    Weapon,
+    Shield,
+    Ammo,
+    Whatever,
+}
+
 impl Unit {
     pub fn intersects_with(&self, p0: &Vec2, p1: &Vec2) -> bool {
         HittableEntity::from(self).intersects_with(p0, p1)
@@ -53,6 +60,25 @@ impl Unit {
             println!("no weapon");
             false
         }
+    }
+
+    pub fn priority(&self) -> LootPriority {
+        if self.weapon.is_none() || self.weapon.unwrap() != 2 {
+            return LootPriority::Weapon{}
+        }
+
+        let weapon_idx = self.weapon.unwrap() as usize;
+        let max_ammo = [100, 250, 25];
+
+        if self.ammo[weapon_idx] < max_ammo[weapon_idx] / 5 {
+            return LootPriority::Ammo
+        }
+
+        if self.shield_potions < 3 {
+            return LootPriority::Shield
+        }
+
+        LootPriority::Whatever
     }
 }
 

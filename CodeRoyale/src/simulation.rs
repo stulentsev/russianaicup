@@ -233,7 +233,7 @@ impl MyStrategy {
         for unit in self.my_units.iter() {
             if let Some((pos, dir, vel)) = self.next_positions.get(&unit.id) {
                 if !pos.approx_equal(unit.position) {
-                    println!("tick {}: diff position {}", game.current_tick, (unit.position - *pos).length())
+                    // println!("tick {}: diff position {}", game.current_tick, (unit.position - *pos).length())
                 }
 
                 if (dir.arg() - unit.direction.arg()) > 10f64.powi(-9) {

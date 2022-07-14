@@ -89,10 +89,14 @@ impl MyStrategy {
                 self.targets.entry(unit.id).or_insert(enemy.id);
                 Some(enemy)
             })
-            .map(|enemy| Vec2Order {
-                vec: (enemy.position - unit.position).rotate(self.angle_for_leading_shot(enemy, unit, debug_interface)),
-                description: Some("turning to enemy".to_string()
-                ),
+            .map(|enemy| {
+                let weapon = &self.constants.weapons[unit.weapon.unwrap() as usize];
+                let fire_target = enemy.position + (enemy.velocity * unit.position.distance_to(&enemy.position) / weapon.projectile_speed);
+
+                Vec2Order {
+                    vec: fire_target - unit.position,
+                    description: Some("turning to enemy".to_string()),
+                }
             })
     }
 
@@ -171,15 +175,19 @@ impl MyStrategy {
         if self.is_action_cooldown(unit) {
             return None;
         }
+
+        if !matches!(unit.priority(), LootPriority::Weapon | LootPriority::Whatever) {
+            return None;
+        }
         let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
 
         match unit.weapon {
             Some(i) if i as usize == bow_idx => {
-                return None
+                return None;
             }
             _ => {
                 let predicate = |loot: &Loot| {
-                    matches!(loot.item, Item::Weapon{type_index: weapon_idx})
+                    matches!(loot.item, Item::Weapon{type_index: i} if i as usize == bow_idx)
                 };
                 self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
             }
@@ -188,6 +196,10 @@ impl MyStrategy {
 
     fn velocity_go_to_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         if self.is_action_cooldown(unit) {
+            return None;
+        }
+
+        if !matches!(unit.priority(), LootPriority::Shield | LootPriority::Whatever) {
             return None;
         }
         if unit.shield_potions >= self.constants.max_shield_potions_in_inventory {
@@ -204,15 +216,22 @@ impl MyStrategy {
         if self.is_action_cooldown(unit) {
             return None;
         }
+
+        if !matches!(unit.priority(), LootPriority::Ammo | LootPriority::Whatever) {
+            return None;
+        }
+        
         let weapon_idx = unit.weapon? as usize;
+        let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
+
         let weapon = self.constants.weapons.get(weapon_idx)?;
 
-        if *unit.ammo.get(weapon_idx)? >= weapon.max_inventory_ammo {
+        if unit.ammo[weapon_idx] >= weapon.max_inventory_ammo {
             return None;
         }
 
         let predicate = |loot: &Loot| {
-            matches!(loot.item, Item::Ammo{weapon_type_index: weapon_idx, ..})
+            matches!(loot.item, Item::Ammo{weapon_type_index: i, ..} if i as usize == weapon_idx || i as usize == bow_idx)
         };
         self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
     }
@@ -263,6 +282,11 @@ impl MyStrategy {
     fn action_shoot_at_target(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
         let enemy_id = self.targets.get(&unit.id)?;
         let enemy = self.units_by_id.get(enemy_id)?;
+        let ammo = unit.ammo[unit.weapon? as usize];
+
+        if ammo == 0 {
+            return None
+        }
 
         Some(ActionOrderOrder {
             action_order: ActionOrder::Aim { shoot: true },
@@ -283,14 +307,15 @@ impl MyStrategy {
 
     fn action_pick_up_ammo(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
         let weapon_idx = unit.weapon? as usize;
+        let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
         let weapon = self.constants.weapons.get(weapon_idx)?;
 
-        if *unit.ammo.get(weapon_idx)? >= weapon.max_inventory_ammo {
+        if unit.ammo[weapon_idx] >= weapon.max_inventory_ammo {
             return None;
         }
 
         let predicate = |loot: &Loot| {
-            matches!(loot.item, Item::Ammo{weapon_type_index: weapon_idx, ..})
+            matches!(loot.item, Item::Ammo{weapon_type_index: i, ..} if i as usize == weapon_idx || i as usize == bow_idx)
         };
         self.action_pick_up_loot(unit, game, &predicate, debug_interface)
     }
@@ -300,11 +325,11 @@ impl MyStrategy {
 
         match unit.weapon {
             Some(i) if i as usize == bow_idx => {
-                return None
+                return None;
             }
             _ => {
                 let predicate = |loot: &Loot| {
-                    matches!(loot.item, Item::Weapon{type_index: weapon_idx})
+                    matches!(loot.item, Item::Weapon{type_index: i} if i as usize == bow_idx)
                 };
                 self.action_pick_up_loot(unit, game, &predicate, debug_interface)
             }
