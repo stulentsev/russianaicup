@@ -309,7 +309,7 @@ impl MyStrategy {
         let mut rng = rand::thread_rng();
         let mut random_point = loop {
             let p = center + Vec2::from_length_and_angle(rng.gen_range(0.0..radius), rng.gen_range(0.0..2.0 * PI));
-            if !self.constants.obstacles.iter().any(|o| o.position.distance_to(&p) < self.constants.unit_radius / 2.0 + 0.1) {
+            if !self.constants.obstacles.iter().any(|o| o.position.distance_to(&p) < (o.radius + self.constants.unit_radius / 2.0) + 0.2) {
                 break p;
             }
         };
