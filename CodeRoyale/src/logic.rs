@@ -143,6 +143,51 @@ impl MyStrategy {
         })
     }
 
+    fn velocity_steer_around_obstacles(&self, unit: &Unit, vec_order: Vec2Order, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        let delta_time = 1.0 / self.constants.ticks_per_second;
+        let mut t = 0;
+        let mut max_t = 30;
+        let obstacle_in_the_way = loop {
+            t += 1;
+            if t >= max_t {
+                break None
+            }
+            let future_position = unit.position + unit.velocity * delta_time * t as f64;
+            let obstacle_in_the_way = self.constants.obstacles.iter().find(|o| o.position.distance_to(&future_position) < o.radius + self.constants.unit_radius);
+            if obstacle_in_the_way.is_some() {
+                break obstacle_in_the_way;
+            }
+        };
+
+        if obstacle_in_the_way.is_none() {
+            return Some(vec_order);
+        }
+
+        let obstacle = obstacle_in_the_way.unwrap();
+
+        let velocity = vec_order.vec;
+        let turn_indicator = velocity.cross_product(&(obstacle.position - unit.position));
+        let leeway = 1.0;
+        let opposite = obstacle.radius + self.constants.unit_radius + leeway;
+        let hypot = obstacle.position - unit.position;
+        let sin_angle = opposite / hypot.length();
+        let mut angle = sin_angle.asin();
+
+        if angle.is_nan() { angle = PI / 2.0 };
+
+        // println!("turn {}, opposite {}, hypot {}, angle {}", turn_indicator, opposite, hypot, angle.to_degrees());
+        if turn_indicator < 0.0 {
+            // turn left
+            Some(Vec2Order { vec: velocity.rotate(angle), description: Some("turning left".to_string()) })
+        } else if turn_indicator > 0.0 {
+            // turn right
+            Some(Vec2Order { vec: velocity.rotate(-angle), description: Some("turning right".to_string()) })
+        } else {
+            Some(vec_order)
+        }
+    }
+
+
     fn velocity_correction_avoid_projectiles(&self, proposed_velocity: Vec2, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
         let threatening_projectiles = self.projectiles_aimed_at_target(game, HittableEntity::from(unit));
 
@@ -238,19 +283,14 @@ impl MyStrategy {
         self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
     }
 
-    fn velocity_go_to_center_of_zone(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
-        Some(Vec2Order {
-            vec: game.zone.next_center - unit.position,
-            description: Some("going to center of zone".to_string()),
-        })
-    }
-
     fn velocity_continue_to_waypoint(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         let waypoint = self.waypoints.get(&unit.id)?;
 
         Some(Vec2Order {
             vec: *waypoint - unit.position,
             description: Some("going to waypoint".to_string()),
+        }).and_then(|vec_order| {
+            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
         })
     }
 
@@ -261,8 +301,8 @@ impl MyStrategy {
         let mut rng = rand::thread_rng();
         let mut random_point = loop {
             let p = center + Vec2::from_length_and_angle(rng.gen_range(0.0..radius), rng.gen_range(0.0..2.0 * PI));
-            if !self.constants.obstacles.iter().any(|o| o.position.distance_to(&p) < self.constants.unit_radius / 2.0 + 0.1 ) {
-                break p
+            if !self.constants.obstacles.iter().any(|o| o.position.distance_to(&p) < self.constants.unit_radius / 2.0 + 0.1) {
+                break p;
             }
         };
 
@@ -271,6 +311,8 @@ impl MyStrategy {
         Some(Vec2Order {
             vec: random_point - unit.position,
             description: Some("going to a random point".to_string()),
+        }).and_then(|vec_order| {
+            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
         })
     }
 
@@ -292,6 +334,8 @@ impl MyStrategy {
                     vec: (loot.position - unit.position).clamp_min(6.0),
                     description: Some("going to loot".to_string()),
                 }
+            }).and_then(|vec_order| {
+                self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
             })
     }
 
@@ -316,7 +360,7 @@ impl MyStrategy {
         let ammo = unit.ammo[unit.weapon? as usize];
 
         if ammo == 0 {
-            return None
+            return None;
         }
 
         Some(ActionOrderOrder {
@@ -446,6 +490,14 @@ impl MyStrategy {
         let target_direction = random_point - unit.position;
         let target_velocity = random_point - unit.position;
         (target_direction, target_velocity)
+    }
+
+    pub fn clear_waypoint_if_in_storm(&mut self, unit: &Unit, game: &Game) {
+        if let Some(wp) = self.waypoints.get(&unit.id) {
+            if game.zone.current_center.distance_to(wp) > game.zone.current_radius {
+                self.waypoints.remove(&unit.id);
+            }
+        }
     }
 
     pub fn clear_waypoint_if_reached(&mut self, unit: &Unit) {

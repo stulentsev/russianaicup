@@ -59,6 +59,8 @@ impl MyStrategy {
 
             self.visualize_sounds(unit, game, &mut debug_interface);
             self.visualize_projectiles(game, &mut debug_interface);
+            self.visualize_waypoint(unit, &mut debug_interface);
+            self.clear_waypoint_if_in_storm(unit, game);
             self.clear_waypoint_if_reached(unit);
 
             let target_direction: Vec2 = self.get_direction(unit, game, &mut debug_interface);

@@ -73,6 +73,15 @@ impl MyStrategy {
         }
     }
 
+    pub(crate) fn visualize_waypoint(&self, unit: &Unit, debug_interface: &mut Option<&mut DebugInterface>) {
+        if let Some(wp) = self.waypoints.get(&unit.id) {
+            if let Some(debug) = debug_interface.as_mut() {
+                debug.add_circle(*wp, 1.3, Color::blue().a(0.6));
+                debug.add_placed_text(*wp, format!("wp for unit {}", unit.id), Vec2::zero(), 0.6, Color::blue().a(0.8));
+            }
+        }
+    }
+
     fn show_weapon_ranges(&self, debug_interface: &mut DebugInterface) {
         for my_unit in self.my_units.iter() {
             if let Some(weapon_idx) = my_unit.weapon {

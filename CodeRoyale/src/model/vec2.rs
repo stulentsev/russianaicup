@@ -28,6 +28,22 @@ impl Vec2 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 
+
+    // if( cross == -0.0f )
+    // turn around
+    //
+    // if( cross == 0.0f )
+    // already traveling the right direction
+    //
+    // if( cross < 0.0f)
+    // turn left
+    //
+    // if( cross > 0.0f)
+    // turn right
+    pub fn cross_product(&self, other: &Self) -> f64 {
+        return self.x * other.y - self.y * other.x
+    }
+
     pub fn dot_product(&self, other: &Self) -> f64 {
         self.x * other.x + self.y * other.y
     }
