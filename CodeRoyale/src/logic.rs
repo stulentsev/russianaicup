@@ -20,6 +20,7 @@ impl MyStrategy {
     pub fn get_velocity(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
         let order = None
             .or_else(|| self.velocity_avoid_projectiles(unit, game, debug_interface))
+            .or_else(|| self.velocity_go_to_weapon(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_shield(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_ammo(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_center_of_zone(unit, game, debug_interface));
@@ -55,6 +56,7 @@ impl MyStrategy {
         }
         let order = None
             .or_else(|| self.action_shoot_at_target(unit, game, debug_interface))
+            .or_else(|| self.action_pick_up_weapon(unit, game, debug_interface))
             .or_else(|| self.action_pick_up_shield(unit, game, debug_interface))
             .or_else(|| self.action_drink_shield(unit, game, debug_interface))
             .or_else(|| self.action_pick_up_ammo(unit, game, debug_interface))
@@ -165,6 +167,25 @@ impl MyStrategy {
             .collect()
     }
 
+    fn velocity_go_to_weapon(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        if self.is_action_cooldown(unit) {
+            return None;
+        }
+        let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
+
+        match unit.weapon {
+            Some(i) if i as usize == bow_idx => {
+                return None
+            }
+            _ => {
+                let predicate = |loot: &Loot| {
+                    matches!(loot.item, Item::Weapon{type_index: weapon_idx})
+                };
+                self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
+            }
+        }
+    }
+
     fn velocity_go_to_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         if self.is_action_cooldown(unit) {
             return None;
@@ -272,6 +293,22 @@ impl MyStrategy {
             matches!(loot.item, Item::Ammo{weapon_type_index: weapon_idx, ..})
         };
         self.action_pick_up_loot(unit, game, &predicate, debug_interface)
+    }
+
+    fn action_pick_up_weapon(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
+        let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
+
+        match unit.weapon {
+            Some(i) if i as usize == bow_idx => {
+                return None
+            }
+            _ => {
+                let predicate = |loot: &Loot| {
+                    matches!(loot.item, Item::Weapon{type_index: weapon_idx})
+                };
+                self.action_pick_up_loot(unit, game, &predicate, debug_interface)
+            }
+        }
     }
 
     fn action_pick_up_loot(&self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
