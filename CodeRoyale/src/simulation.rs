@@ -237,13 +237,13 @@ impl MyStrategy {
                 }
 
                 if (dir.arg() - unit.direction.arg()) > 10f64.powi(-9) {
-                    println!(
-                        "tick {}: diff direction {}, expected {}, got {}",
-                        game.current_tick,
-                        (unit.direction.arg() - dir.arg()).to_degrees(),
-                        dir.arg().to_degrees(),
-                        unit.direction.arg().to_degrees(),
-                    );
+                    // println!(
+                    //     "tick {}: diff direction {}, expected {}, got {}",
+                    //     game.current_tick,
+                    //     (unit.direction.arg() - dir.arg()).to_degrees(),
+                    //     dir.arg().to_degrees(),
+                    //     unit.direction.arg().to_degrees(),
+                    // );
                     if let Some(debug) = debug_interface.as_mut() {
                         debug.add_segment(unit.position, unit.position + unit.direction, 0.2, Color::green());
                         debug.add_segment(unit.position, unit.position + *dir, 0.2, Color::red());
@@ -251,7 +251,7 @@ impl MyStrategy {
                 }
 
                 if !vel.approx_equal(unit.velocity) {
-                    println!("tick {}: diff velocity {}, expected {}, got {}", game.current_tick, (unit.velocity - *vel).length(), *vel, unit.velocity);
+                    // println!("tick {}: diff velocity {}, expected {}, got {}", game.current_tick, (unit.velocity - *vel).length(), *vel, unit.velocity);
                     if let Some(debug) = debug_interface.as_mut() {
                         debug.add_segment(unit.position, unit.position + unit.velocity, 0.2, Color::green());
                         debug.add_segment(unit.position, unit.position + *vel, 0.2, Color::red());
