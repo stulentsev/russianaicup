@@ -16,6 +16,7 @@ pub struct MyStrategy {
     pub(crate) seen_projectiles: HashMap<i32, Projectile>,
     pub(crate) current_tick: i32,
     pub(crate) next_positions: HashMap<i32, (Vec2, Vec2, Vec2)>,
+    pub(crate) waypoints: HashMap<i32, Vec2>,
 }
 
 impl MyStrategy {
@@ -30,6 +31,7 @@ impl MyStrategy {
             seen_projectiles: HashMap::new(),
             current_tick: 0,
             next_positions: HashMap::new(),
+            waypoints: HashMap::new(),
         }
     }
     pub fn get_order(
@@ -57,6 +59,7 @@ impl MyStrategy {
 
             self.visualize_sounds(unit, game, &mut debug_interface);
             self.visualize_projectiles(game, &mut debug_interface);
+            self.clear_waypoint_if_reached(unit);
 
             let target_direction: Vec2 = self.get_direction(unit, game, &mut debug_interface);
             let action: Option<ActionOrder> = self.get_action_order(unit, game, &mut debug_interface);

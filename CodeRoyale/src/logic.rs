@@ -1,4 +1,5 @@
 use std::f64::consts::PI;
+use rand::Rng;
 use ai_cup_22::debugging::Color;
 use crate::{DebugInterface, MyStrategy};
 use ai_cup_22::model::*;
@@ -17,13 +18,14 @@ struct ActionOrderOrder {
 #[allow(dead_code)]
 #[allow(unused_variables)]
 impl MyStrategy {
-    pub fn get_velocity(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
+    pub fn get_velocity(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
         let order = None
             .or_else(|| self.velocity_avoid_projectiles(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_weapon(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_shield(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_ammo(unit, game, debug_interface))
-            .or_else(|| self.velocity_go_to_center_of_zone(unit, game, debug_interface));
+            .or_else(|| self.velocity_continue_to_waypoint(unit, game, debug_interface))
+            .or_else(|| self.velocity_go_to_somewhere_in_the_zone(unit, game, debug_interface));
 
         if let Some(vec_order) = order {
             if let Some(text) = vec_order.description {
@@ -220,7 +222,7 @@ impl MyStrategy {
         if !matches!(unit.priority(), LootPriority::Ammo | LootPriority::Whatever) {
             return None;
         }
-        
+
         let weapon_idx = unit.weapon? as usize;
         let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
 
@@ -240,6 +242,35 @@ impl MyStrategy {
         Some(Vec2Order {
             vec: game.zone.next_center - unit.position,
             description: Some("going to center of zone".to_string()),
+        })
+    }
+
+    fn velocity_continue_to_waypoint(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        let waypoint = self.waypoints.get(&unit.id)?;
+
+        Some(Vec2Order {
+            vec: *waypoint - unit.position,
+            description: Some("going to waypoint".to_string()),
+        })
+    }
+
+    fn velocity_go_to_somewhere_in_the_zone(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        let center = game.zone.next_center;
+        let radius = game.zone.next_radius;
+
+        let mut rng = rand::thread_rng();
+        let mut random_point = loop {
+            let p = center + Vec2::from_length_and_angle(rng.gen_range(0.0..radius), rng.gen_range(0.0..2.0 * PI));
+            if !self.constants.obstacles.iter().any(|o| o.position.distance_to(&p) < self.constants.unit_radius / 2.0 + 0.1 ) {
+                break p
+            }
+        };
+
+        self.waypoints.entry(unit.id).and_modify(|w| *w = random_point).or_insert(random_point);
+
+        Some(Vec2Order {
+            vec: random_point - unit.position,
+            description: Some("going to a random point".to_string()),
         })
     }
 
@@ -415,5 +446,13 @@ impl MyStrategy {
         let target_direction = random_point - unit.position;
         let target_velocity = random_point - unit.position;
         (target_direction, target_velocity)
+    }
+
+    pub fn clear_waypoint_if_reached(&mut self, unit: &Unit) {
+        if let Some(wp) = self.waypoints.get(&unit.id) {
+            if unit.position.distance_to(wp) < self.constants.unit_radius / 2.0 {
+                self.waypoints.remove(&unit.id);
+            }
+        }
     }
 }
