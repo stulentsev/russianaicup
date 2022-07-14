@@ -244,19 +244,19 @@ impl MyStrategy {
                     //     dir.arg().to_degrees(),
                     //     unit.direction.arg().to_degrees(),
                     // );
-                    if let Some(debug) = debug_interface.as_mut() {
-                        debug.add_segment(unit.position, unit.position + unit.direction, 0.2, Color::green());
-                        debug.add_segment(unit.position, unit.position + *dir, 0.2, Color::red());
-                    }
+                    // if let Some(debug) = debug_interface.as_mut() {
+                    //     debug.add_segment(unit.position, unit.position + unit.direction, 0.2, Color::green());
+                    //     debug.add_segment(unit.position, unit.position + *dir, 0.2, Color::red());
+                    // }
                 }
 
                 if !vel.approx_equal(unit.velocity) {
                     // println!("tick {}: diff velocity {}, expected {}, got {}", game.current_tick, (unit.velocity - *vel).length(), *vel, unit.velocity);
-                    if let Some(debug) = debug_interface.as_mut() {
-                        debug.add_segment(unit.position, unit.position + unit.velocity, 0.2, Color::green());
-                        debug.add_segment(unit.position, unit.position + *vel, 0.2, Color::red());
-                        debug.add_segment(unit.position, unit.position + unit.direction, 0.1, Color::blue().a(0.7));
-                    }
+                    // if let Some(debug) = debug_interface.as_mut() {
+                    //     debug.add_segment(unit.position, unit.position + unit.velocity, 0.2, Color::green());
+                    //     debug.add_segment(unit.position, unit.position + *vel, 0.2, Color::red());
+                    //     debug.add_segment(unit.position, unit.position + unit.direction, 0.1, Color::blue().a(0.7));
+                    // }
                 }
             }
         }
