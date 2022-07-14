@@ -107,7 +107,7 @@ impl MyStrategy {
     }
 
     pub fn place_label(&self, position: Vec2, text: String, line: usize, debug_interface: &mut Option<&mut DebugInterface>) {
-        let offset_y = line as f64 * 0.5 - 2.0;
+        let offset_y = line as f64 * 0.8;
         if let Some(debug) = debug_interface.as_mut() {
             debug.add_placed_text(position, text, Vec2{x: 0.0, y: offset_y}, 1.3, Color::blue());
         }
