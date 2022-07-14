@@ -1,7 +1,9 @@
 use std::cmp::max;
 use std::f64::consts::{FRAC_PI_2, PI};
 use itertools::Itertools;
+use ai_cup_22::debugging::Color;
 use ai_cup_22::model::*;
+use crate::{DebugInterface, MyStrategy};
 use crate::simulatable_model::*;
 
 #[derive(Default, Clone)]
@@ -220,10 +222,64 @@ impl Simulator {
             v_len
         }
     }
+}
 
+impl MyStrategy {
+    pub fn check_expected_position_vs_actual(&mut self, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) {
+        if debug_interface.is_none() {
+            return
+        }
+
+        for unit in self.my_units.iter() {
+            if let Some((pos, dir, vel)) = self.next_positions.get(&unit.id) {
+                if !pos.approx_equal(unit.position) {
+                    println!("tick {}: diff position {}", game.current_tick, (unit.position - *pos).length())
+                }
+
+                if (dir.arg() - unit.direction.arg()) > 10f64.powi(-9) {
+                    println!(
+                        "tick {}: diff direction {}, expected {}, got {}",
+                        game.current_tick,
+                        (unit.direction.arg() - dir.arg()).to_degrees(),
+                        dir.arg().to_degrees(),
+                        unit.direction.arg().to_degrees(),
+                    );
+                    if let Some(debug) = debug_interface.as_mut() {
+                        debug.add_segment(unit.position, unit.position + unit.direction, 0.2, Color::green());
+                        debug.add_segment(unit.position, unit.position + *dir, 0.2, Color::red());
+                    }
+                }
+
+                if !vel.approx_equal(unit.velocity) {
+                    println!("tick {}: diff velocity {}, expected {}, got {}", game.current_tick, (unit.velocity - *vel).length(), *vel, unit.velocity);
+                    if let Some(debug) = debug_interface.as_mut() {
+                        debug.add_segment(unit.position, unit.position + unit.velocity, 0.2, Color::green());
+                        debug.add_segment(unit.position, unit.position + *vel, 0.2, Color::red());
+                        debug.add_segment(unit.position, unit.position + unit.direction, 0.1, Color::blue().a(0.7));
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn predict_next_positions(&mut self, game: &Game, unit: &Unit, unit_order: &UnitOrder) {
+        let mut simulation = Simulator::new(game, &self.constants, unit.id, unit_order.clone());
+        simulation.simulate_tick();
+        let sim_unit = simulation.unit();
+        self.next_positions
+            .entry(unit.id)
+            .and_modify(|(pos, dir, vel)| {
+                *pos = sim_unit.position;
+                *dir = sim_unit.direction;
+                *vel = sim_unit.velocity;
+            })
+            .or_insert_with(|| (sim_unit.position, sim_unit.direction, sim_unit.velocity));
+    }
 }
 pub fn f64_approx_eq(left: f64, right: f64) -> bool {
     let factor = 10f64.powi(7);
     (left * factor).trunc() == (right * factor).trunc()
 }
+
+
 

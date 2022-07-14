@@ -4,9 +4,6 @@
     "Create": {
       "Override": {
         "continue_until": "AllDead",
-        "bot_players": 0,
-        "obstacle_density": 0,
-        "starting_weapon_ammo": 10,
         "preset": "Round1"
       }
     }

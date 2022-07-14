@@ -27,6 +27,7 @@ impl MyStrategy {
             // println!("enemy: {}, my units: {:?} / {}", unit.id, my_units_that_see_this.iter().map(|u| u.id).collect::<Vec<_>>(), self.my_units.len());
             for mu in my_units_that_see_this.iter() {
                 debug_interface.add_segment(mu.position, unit.position, 0.2, Color::red());
+                debug_interface.add_segment(mu.position, (unit.position - mu.position).rotate(self.angle_for_leading_shot(unit, mu, &mut None)), 0.2, Color::green().a(0.5));
             }
             let text = format!(
                 "unit {}, hittable: {}",
@@ -102,4 +103,20 @@ impl MyStrategy {
             debug.add_placed_text(position, text, Vec2{x: 0.0, y: offset_y}, 1.3, Color::blue());
         }
     }
+
+    pub fn show_status_labels_for_units(&mut self, mut debug_interface: &mut Option<&mut DebugInterface>) {
+        if let Some(debug) = debug_interface.as_mut() {
+            for unit in self.my_units.iter() {
+                let text = match unit.action {
+                    Some(Action { action_type: ActionType::Looting, .. }) => Some("looting"),
+                    Some(Action { action_type: ActionType::UseShieldPotion, .. }) => Some("drinking shield"),
+                    _ => None,
+                };
+                if let Some(t) = text {
+                    self.place_label(unit.position, t.to_string(), 3, &mut debug_interface);
+                }
+            }
+        }
+    }
+
 }

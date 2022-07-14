@@ -1,3 +1,4 @@
+use std::f64::consts::PI;
 use ai_cup_22::debugging::Color;
 use crate::{DebugInterface, MyStrategy};
 use ai_cup_22::model::*;
@@ -25,7 +26,7 @@ impl MyStrategy {
 
         if let Some(vec_order) = order {
             if let Some(text) = vec_order.description {
-                self.place_label(unit.position, format!("vel: {}", text), 0,debug_interface);
+                self.place_label(unit.position, format!("vel: {}", text), 0, debug_interface);
             }
             vec_order.vec
         } else {
@@ -36,7 +37,7 @@ impl MyStrategy {
     pub fn get_direction(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
         let order = None
             .or_else(|| self.direction_hittable_enemy(unit, game, debug_interface));
-        // .or_else(|| self.direction_look_around(unit, game, debug_interface))
+        // .or_else(|| self.direction_look_around(unit, game, debug_interface));
 
         if let Some(vec_order) = order {
             if let Some(text) = vec_order.description {
@@ -50,13 +51,14 @@ impl MyStrategy {
 
     pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
         if self.is_action_cooldown(unit) {
-            return None
+            return None;
         }
         let order = None
+            .or_else(|| self.action_shoot_at_target(unit, game, debug_interface))
             .or_else(|| self.action_pick_up_shield(unit, game, debug_interface))
-            .or_else(|| self.action_pick_up_ammo(unit, game, debug_interface))
             .or_else(|| self.action_drink_shield(unit, game, debug_interface))
-            .or_else(|| self.action_shoot_at_target(unit, game, debug_interface));
+            .or_else(|| self.action_pick_up_ammo(unit, game, debug_interface))
+            ;
 
         order.map(|action_order_order| {
             if let Some(text) = action_order_order.description {
@@ -67,21 +69,29 @@ impl MyStrategy {
     }
 
     fn direction_hittable_enemy(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        if unit.weapon.is_none() {
+            return None;
+        }
+
         self
             .enemy_units
             .iter()
-            .filter(|e| self.unit_is_hittable_by(e, unit, &self.constants, &mut None))
-            .filter(|e| e.is_within_fire_range_of(unit, &self.constants))
+            .filter(|enemy| self.unit_is_hittable_by(enemy, unit, &self.constants, &mut None))
+            .filter(|enemy| enemy.is_within_fire_range_of(unit, &self.constants))
             .min_by(|e1, e2| {
-                let a1 = unit.direction.angle_with(&(e1.position - unit.position));
-                let a2 = unit.direction.angle_with(&(e2.position - unit.position));
+                let a1 = self.angle_for_leading_shot(e1, unit, debug_interface);
+                let a2 = self.angle_for_leading_shot(e2, unit, debug_interface);
                 a1.total_cmp(&a2)
             })
-            .and_then(|e| {
-                self.targets.entry(unit.id).or_insert(e.id);
-                Some(e)
+            .and_then(|enemy| {
+                self.targets.entry(unit.id).or_insert(enemy.id);
+                Some(enemy)
             })
-            .map(|e| Vec2Order { vec: e.position - unit.position, description: Some("turning to enemy".to_string()) })
+            .map(|enemy| Vec2Order {
+                vec: (enemy.position - unit.position).rotate(self.angle_for_leading_shot(enemy, unit, debug_interface)),
+                description: Some("turning to enemy".to_string()
+                ),
+            })
     }
 
     fn direction_look_around(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
@@ -112,7 +122,7 @@ impl MyStrategy {
                 let mut simulator = Simulator::new(game, &self.constants, unit.id, unit_order);
                 let result = simulator.simulate_n_ticks(self.constants.ticks_per_second as usize);
                 let score = result.score();
-                println!("angle {}, score {}", angle.to_degrees(), score);
+                // println!("angle {}, score {}", angle.to_degrees(), score);
                 score
             });
 
@@ -303,6 +313,30 @@ impl MyStrategy {
         }
     }
 
+    pub fn angle_for_leading_shot(&self, enemy: &Unit, unit: &Unit, debug_interface: &mut Option<&mut DebugInterface>) -> f64 {
+        let weapon_idx = unit.weapon.unwrap();
+        let weapon = &self.constants.weapons[weapon_idx as usize];
+        let projectile_speed = weapon.projectile_speed;
+        let enemy_speed = enemy.velocity.length();
+
+        let d = enemy.position - unit.position;
+        let angle_b = (enemy.velocity - enemy.position).angle_with(&(d));
+        let sin_angle_a = angle_b.sin() * enemy_speed / projectile_speed;
+        let angle_a = sin_angle_a.asin(); // abs
+        let angle_c = PI - angle_a - angle_b;
+
+        let moving_right = (enemy.position + enemy.velocity).arg() > d.arg();
+        let result = if moving_right {
+            d.arg() - angle_a
+        } else {
+            d.arg() + angle_a
+        };
+        // if let Some(debug) = debug_interface.as_mut() {
+        //     debug.add_segment(unit.position, unit.position + Vec2::from_length_and_angle(d.length(), result), 0.15, Color::green().a(0.5));
+        // }
+        result
+    }
+
     pub fn is_action_cooldown(&self, unit: &Unit) -> bool {
         if let Some(action) = unit.action.as_ref() {
             action.finish_tick > self.current_tick
@@ -311,4 +345,13 @@ impl MyStrategy {
         }
     }
 
+    pub fn go_to_next_point_from_the_hardcoded_list(&self, unit: &Unit) -> (Vec2, Vec2) {
+        let random_point = Vec2 {
+            x: vec![100.0, -100.0, -100.0, 100.0, -80.0, -80.0, 80.0][(self.current_tick as usize / 30) % 7],
+            y: vec![100.0, 100.0, -100.0, -100.0, -80.0, 80.0, 80.0][(self.current_tick as usize / 30) % 7],
+        };
+        let target_direction = random_point - unit.position;
+        let target_velocity = random_point - unit.position;
+        (target_direction, target_velocity)
+    }
 }

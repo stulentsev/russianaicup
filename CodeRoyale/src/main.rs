@@ -1,11 +1,17 @@
 mod my_strategy;
 mod debug_interface;
 mod visualization;
+pub use visualization::*;
 mod logic;
+pub use logic::*;
 mod bookkeeping;
+pub use bookkeeping::*;
 mod simulation;
+pub use simulation::*;
 mod simulatable_model;
+pub use simulatable_model::*;
 mod visibility;
+pub use visibility::*;
 mod basic_game_entity;
 pub use basic_game_entity::*;
 
