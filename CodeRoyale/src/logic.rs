@@ -146,7 +146,7 @@ impl MyStrategy {
     fn velocity_steer_around_obstacles(&self, unit: &Unit, vec_order: Vec2Order, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         let delta_time = 1.0 / self.constants.ticks_per_second;
         let mut t = 0;
-        let mut max_t = 30;
+        let mut max_t = 10;
         let obstacle_in_the_way = loop {
             t += 1;
             if t >= max_t {
@@ -178,10 +178,18 @@ impl MyStrategy {
         // println!("turn {}, opposite {}, hypot {}, angle {}", turn_indicator, opposite, hypot, angle.to_degrees());
         if turn_indicator < 0.0 {
             // turn left
-            Some(Vec2Order { vec: velocity.rotate(angle), description: Some("turning left".to_string()) })
+            let corrected_velocity = velocity.rotate(angle).clamp(self.constants.max_unit_forward_speed);
+            if let Some(debug) = debug_interface.as_mut() {
+                debug.add_segment(unit.position, unit.position + corrected_velocity, 0.1, Color::red() );
+            }
+            Some(Vec2Order { vec: corrected_velocity, description: Some("turning left".to_string()) })
         } else if turn_indicator > 0.0 {
             // turn right
-            Some(Vec2Order { vec: velocity.rotate(-angle), description: Some("turning right".to_string()) })
+            let corrected_velocity = velocity.rotate(-angle).clamp(self.constants.max_unit_forward_speed);
+            if let Some(debug) = debug_interface.as_mut() {
+                debug.add_segment(unit.position, unit.position + corrected_velocity, 0.1, Color::red() );
+            }
+            Some(Vec2Order { vec: corrected_velocity, description: Some("turning right".to_string()) })
         } else {
             Some(vec_order)
         }
@@ -331,7 +339,7 @@ impl MyStrategy {
             .filter(|loot| loot.position.distance_to(&unit.position) > self.constants.unit_radius)
             .map(|loot| {
                 Vec2Order {
-                    vec: (loot.position - unit.position).clamp_min(6.0),
+                    vec: (loot.position - unit.position).clamp_min(3.0),
                     description: Some("going to loot".to_string()),
                 }
             }).and_then(|vec_order| {
