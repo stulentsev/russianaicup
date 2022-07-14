@@ -63,15 +63,19 @@ impl Unit {
     }
 
     pub fn priority(&self) -> LootPriority {
-        if self.weapon.is_none() || self.weapon.unwrap() != 2 {
-            return LootPriority::Weapon{}
-        }
 
-        let weapon_idx = self.weapon.unwrap() as usize;
+        let weapon_idx = self.weapon.unwrap_or(2) as usize;
+        let bow_idx = 2;
         let max_ammo = [100, 250, 25];
 
-        if self.ammo[weapon_idx] < max_ammo[weapon_idx] / 5 {
-            return LootPriority::Ammo
+        for widx in [weapon_idx, bow_idx] {
+            if self.ammo[widx] <= max_ammo[widx] / 5 {
+                return LootPriority::Ammo
+            }
+        }
+
+        if self.weapon.is_none() || self.weapon.unwrap() != 2 {
+            return LootPriority::Weapon{}
         }
 
         if self.shield_potions < 3 {
