@@ -50,6 +50,7 @@ impl MyStrategy {
         let mut orders = HashMap::new();
 
         self.rebuild_indexes(game);
+        // self.process_sounds(&game);
         self.check_expected_position_vs_actual(game, &mut debug_interface);
 
         self.show_status_labels_for_units(&mut debug_interface);

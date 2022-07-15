@@ -80,11 +80,10 @@ impl MyStrategy {
         self
             .enemy_units
             .iter()
-            .filter(|enemy| self.unit_is_hittable_by(enemy, unit, &self.constants, &mut None))
             .filter(|enemy| enemy.is_within_fire_range_of(unit, &self.constants))
             .min_by(|e1, e2| {
-                let a1 = self.angle_for_leading_shot(e1, unit, debug_interface);
-                let a2 = self.angle_for_leading_shot(e2, unit, debug_interface);
+                let a1 = unit.direction.angle_with(&(self.simple_projected_position(e1, unit) - unit.position));
+                let a2 = unit.direction.angle_with(&(self.simple_projected_position(e2, unit) - unit.position));
                 a1.total_cmp(&a2)
             })
             .and_then(|enemy| {
@@ -92,13 +91,15 @@ impl MyStrategy {
                 Some(enemy)
             })
             .map(|enemy| {
-                let weapon = &self.constants.weapons[unit.weapon.unwrap() as usize];
-                let fire_target = enemy.position + (enemy.velocity * unit.position.distance_to(&enemy.position) / weapon.projectile_speed);
+                let fire_target = self.simple_projected_position(enemy, unit);
 
                 Vec2Order {
                     vec: fire_target - unit.position,
                     description: Some("turning to enemy".to_string()),
                 }
+            })
+            .filter(|vec_order| {
+                self.position_is_hittable_by(&(unit.position + vec_order.vec).into(), unit, &self.constants, debug_interface)
             })
     }
 
@@ -150,7 +151,7 @@ impl MyStrategy {
         let obstacle_in_the_way = loop {
             t += 1;
             if t >= max_t {
-                break None
+                break None;
             }
             let future_position = unit.position + unit.velocity * delta_time * t as f64;
             let obstacle_in_the_way = self.constants.obstacles.iter().find(|o| o.position.distance_to(&future_position) < o.radius + self.constants.unit_radius);
@@ -180,14 +181,14 @@ impl MyStrategy {
             // turn left
             let corrected_velocity = velocity.rotate(angle).clamp(self.constants.max_unit_forward_speed);
             if let Some(debug) = debug_interface.as_mut() {
-                debug.add_segment(unit.position, unit.position + corrected_velocity, 0.1, Color::red() );
+                debug.add_segment(unit.position, unit.position + corrected_velocity, 0.1, Color::red());
             }
             Some(Vec2Order { vec: corrected_velocity, description: Some("turning left".to_string()) })
         } else if turn_indicator > 0.0 {
             // turn right
             let corrected_velocity = velocity.rotate(-angle).clamp(self.constants.max_unit_forward_speed);
             if let Some(debug) = debug_interface.as_mut() {
-                debug.add_segment(unit.position, unit.position + corrected_velocity, 0.1, Color::red() );
+                debug.add_segment(unit.position, unit.position + corrected_velocity, 0.1, Color::red());
             }
             Some(Vec2Order { vec: corrected_velocity, description: Some("turning right".to_string()) })
         } else {
@@ -343,8 +344,8 @@ impl MyStrategy {
                     description: Some("going to loot".to_string()),
                 }
             }).and_then(|vec_order| {
-                self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
-            })
+            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
+        })
     }
 
     fn action_drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
@@ -374,6 +375,10 @@ impl MyStrategy {
         Some(ActionOrderOrder {
             action_order: ActionOrder::Aim { shoot: true },
             description: Some(format!("shooting {} at {}", enemy.id, enemy.position.to_short_string())),
+        })
+        .filter(|vec_order| {
+            let fire_target = self.simple_projected_position(enemy, unit);
+            self.position_is_hittable_by(&fire_target.into(), unit, &self.constants, debug_interface)
         })
     }
 
@@ -438,7 +443,7 @@ impl MyStrategy {
         })
     }
 
-    pub fn unit_is_hittable_by(&self, enemy: &Unit, unit: &Unit, constants: &Constants, debug_interface: &mut Option<&mut DebugInterface>) -> bool {
+    pub fn position_is_hittable_by(&self, enemy: &HittableEntity, unit: &Unit, constants: &Constants, debug_interface: &mut Option<&mut DebugInterface>) -> bool {
         let obstacles_in_los = constants
             .obstacles
             .iter()
@@ -514,5 +519,13 @@ impl MyStrategy {
                 self.waypoints.remove(&unit.id);
             }
         }
+    }
+
+    pub fn simple_projected_position(&self, enemy: &Unit, unit: &Unit) -> Vec2 {
+        let weapon = &self.constants.weapons[unit.weapon.unwrap() as usize];
+        let projectile_travel_time = unit.position.distance_to(&enemy.position) / weapon.projectile_speed;
+        let remaining_aim_time = weapon.aim_time - weapon.aim_time * unit.aim;
+        let fire_target = enemy.position + (enemy.velocity * (projectile_travel_time + remaining_Laim_time));
+        fire_target
     }
 }

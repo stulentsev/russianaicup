@@ -23,11 +23,14 @@ impl MyStrategy {
             .find(|u| state.cursor_world_position.distance_to(&u.position) < self.constants.unit_radius);
 
         if let Some(unit) = unit_under_cursor {
-            let my_units_that_see_this = self.my_units.iter().filter(|mu| self.unit_is_hittable_by(unit, mu, &self.constants, &mut Some(debug_interface))).collect_vec();
+            let my_units_that_see_this = self.my_units.iter().filter(|mu| self.position_is_hittable_by(&HittableEntity::from(unit), mu, &self.constants, &mut Some(debug_interface))).collect_vec();
             // println!("enemy: {}, my units: {:?} / {}", unit.id, my_units_that_see_this.iter().map(|u| u.id).collect::<Vec<_>>(), self.my_units.len());
             for mu in my_units_that_see_this.iter() {
-                debug_interface.add_segment(mu.position, unit.position, 0.2, Color::red());
-                debug_interface.add_segment(mu.position, (unit.position - mu.position).rotate(self.angle_for_leading_shot(unit, mu, &mut None)), 0.2, Color::green().a(0.5));
+                // debug_interface.add_segment(mu.position, (unit.position - mu.position).rotate(self.angle_for_leading_shot(unit, mu, &mut None)), 0.2, Color::green().a(0.5));
+                let fire_target = self.simple_projected_position(unit, mu);
+                debug_interface.add_ring(fire_target, self.constants.unit_radius, 0.1, Color::blue().a(0.4));
+                debug_interface.add_segment(mu.position, fire_target, 0.1, Color::red());
+
             }
             let text = format!(
                 "unit {}, hittable: {}",

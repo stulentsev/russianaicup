@@ -42,3 +42,13 @@ impl From<&Obstacle> for HittableEntity {
         }
     }
 }
+
+impl From<Vec2> for HittableEntity {
+    fn from(position: Vec2) -> Self {
+        Self {
+            position,
+            radius: 1.0,
+        }
+    }
+}
+
