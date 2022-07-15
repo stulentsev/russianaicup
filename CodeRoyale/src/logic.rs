@@ -119,6 +119,7 @@ impl MyStrategy {
 
         let original_direction = if unit.velocity.length() > 0.0 { unit.velocity } else { unit.direction };
 
+        // TODO: simulate complex movements (N velocities, M directions, K ticks), instead of traveling in a straight line
         let rotation_angle = (0..360)
             .step_by(45)
             .map(|angle_degree| (angle_degree as f64).to_radians())
@@ -130,6 +131,8 @@ impl MyStrategy {
                 };
                 let mut simulator = Simulator::new(game, &self.constants, unit.id, unit_order);
                 let result = simulator.simulate_n_ticks(self.constants.ticks_per_second as usize);
+                // TODO: prefer positions away from enemy
+                // TODO: prefer positions behind an obstacle
                 let score = result.score();
                 // println!("angle {}, score {}", angle.to_degrees(), score);
                 score
