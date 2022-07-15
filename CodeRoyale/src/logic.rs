@@ -528,7 +528,7 @@ impl MyStrategy {
         let weapon = &self.constants.weapons[unit.weapon.unwrap() as usize];
         let projectile_travel_time = unit.position.distance_to(&enemy.position) / weapon.projectile_speed;
         let remaining_aim_time = weapon.aim_time - weapon.aim_time * unit.aim;
-        let fire_target = enemy.position + (enemy.velocity * (projectile_travel_time + remaining_Laim_time));
+        let fire_target = enemy.position + (enemy.velocity * (projectile_travel_time + remaining_aim_time));
         fire_target
     }
 }
