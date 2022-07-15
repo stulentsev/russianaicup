@@ -65,4 +65,69 @@ impl MyStrategy {
 
         seen_items
     }
+
+    pub fn process_sounds(&mut self, game: &Game) {
+        let visibility_sectors = self.my_units.iter().map(|unit| self.unit_visibility_sector(unit)).collect_vec();
+
+        for sound in game.sounds.iter() {
+            let source = sound.position;
+            let visible_at_the_moment = visibility_sectors.iter().any(|sec| sec.cover_point(source));
+
+            if visible_at_the_moment {
+                continue
+            }
+
+            let id = self.gen_imaginary_id();
+            let unit_that_heard = self.my_units.iter().find(|u| u.id == sound.unit_id).unwrap();
+            match sound.type_index {
+                1 => {
+                    self.seen_projectiles.entry(id).or_insert(Projectile{
+                        id,
+                        weapon_type_index: 0,
+                        shooter_id: 0,
+                        shooter_player_id: 0,
+                        position: source,
+                        velocity: (unit_that_heard.position - source).clamp(30.0),
+                        life_time: 1.0,
+                        seen_on_tick: game.current_tick,
+                    });
+                },
+                2 => {
+                    self.seen_projectiles.entry(id).or_insert(Projectile{
+                        id,
+                        weapon_type_index: 1,
+                        shooter_id: 0,
+                        shooter_player_id: 0,
+                        position: source,
+                        velocity: (unit_that_heard.position - source).clamp(20.0),
+                        life_time: 1.0,
+                        seen_on_tick: game.current_tick,
+                    });
+                },
+                3 => {
+                    self.seen_projectiles.entry(id).or_insert(Projectile{
+                        id,
+                        weapon_type_index: 2,
+                        shooter_id: 0,
+                        shooter_player_id: 0,
+                        position: source,
+                        velocity: (unit_that_heard.position - source).clamp(40.0),
+                        life_time: 1.0,
+                        seen_on_tick: game.current_tick,
+                    });
+
+                },
+                // 4 => "wand hit",
+                // 5 => "staff hit",
+                // 6 => "bow hit",
+                _ => ()
+            };
+
+        }
+    }
+
+    fn gen_imaginary_id(&mut self) -> i32 {
+        self.next_imaginary_id -= 1;
+        self.next_imaginary_id
+    }
 }

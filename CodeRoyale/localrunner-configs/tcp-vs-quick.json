@@ -3,7 +3,7 @@
   "game": {
     "Create": {
       "Override": {
-        "continue_until": "AllDead",
+        "continue_until": "BotsOnly",
         "preset": "Round1"
       }
     }

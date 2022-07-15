@@ -17,6 +17,7 @@ pub struct MyStrategy {
     pub(crate) current_tick: i32,
     pub(crate) next_positions: HashMap<i32, (Vec2, Vec2, Vec2)>,
     pub(crate) waypoints: HashMap<i32, Vec2>,
+    pub(crate) next_imaginary_id: i32,
 }
 
 impl MyStrategy {
@@ -32,6 +33,7 @@ impl MyStrategy {
             current_tick: 0,
             next_positions: HashMap::new(),
             waypoints: HashMap::new(),
+            next_imaginary_id: -1,
         }
     }
     pub fn get_order(
@@ -91,4 +93,6 @@ impl MyStrategy {
     }
 
     pub fn finish(&mut self) {}
+
+
 }
