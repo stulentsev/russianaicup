@@ -36,8 +36,8 @@ impl Simulator {
         }
     }
 
-    pub fn unit(&self) -> SimUnit {
-        self.game.units.iter().find(|u| u.id == self.unit_id).unwrap().clone()
+    pub fn unit(&self) -> Option<SimUnit> {
+        self.game.units.iter().find(|u| u.id == self.unit_id).cloned()
     }
     pub fn simulate_n_ticks(&mut self, n: usize) -> SimulationResult {
         for _ in 0..n {
@@ -265,15 +265,16 @@ impl MyStrategy {
     pub fn predict_next_positions(&mut self, game: &Game, unit: &Unit, unit_order: &UnitOrder) {
         let mut simulation = Simulator::new(game, &self.constants, unit.id, unit_order.clone());
         simulation.simulate_tick();
-        let sim_unit = simulation.unit();
-        self.next_positions
-            .entry(unit.id)
-            .and_modify(|(pos, dir, vel)| {
-                *pos = sim_unit.position;
-                *dir = sim_unit.direction;
-                *vel = sim_unit.velocity;
-            })
-            .or_insert_with(|| (sim_unit.position, sim_unit.direction, sim_unit.velocity));
+        if let Some(sim_unit) = simulation.unit() {
+            self.next_positions
+                .entry(unit.id)
+                .and_modify(|(pos, dir, vel)| {
+                    *pos = sim_unit.position;
+                    *dir = sim_unit.direction;
+                    *vel = sim_unit.velocity;
+                })
+                .or_insert_with(|| (sim_unit.position, sim_unit.direction, sim_unit.velocity));
+        }
     }
 }
 pub fn f64_approx_eq(left: f64, right: f64) -> bool {

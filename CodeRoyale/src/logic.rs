@@ -52,7 +52,7 @@ impl MyStrategy {
         }
     }
 
-    pub fn get_action_order(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
+    pub fn get_action_order(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
         if self.is_action_cooldown(unit) {
             return None;
         }
@@ -230,7 +230,7 @@ impl MyStrategy {
             .collect()
     }
 
-    fn velocity_go_to_weapon(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+    fn velocity_go_to_weapon(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         if self.is_action_cooldown(unit) {
             return None;
         }
@@ -253,7 +253,7 @@ impl MyStrategy {
         }
     }
 
-    fn velocity_go_to_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+    fn velocity_go_to_shield(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         if self.is_action_cooldown(unit) {
             return None;
         }
@@ -271,7 +271,7 @@ impl MyStrategy {
         self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
     }
 
-    fn velocity_go_to_ammo(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+    fn velocity_go_to_ammo(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         if self.is_action_cooldown(unit) {
             return None;
         }
@@ -328,16 +328,27 @@ impl MyStrategy {
         })
     }
 
-    fn velocity_go_to_loot(&self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+    fn velocity_go_to_loot(&mut self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         if self.is_action_cooldown(unit) {
             return None;
         }
         let nearest_loot: Option<&Loot> = self
             .seen_loot
             .values()
+            .filter(|loot| {
+                match self.move_targets.get(&loot.id) {
+                    Some(id) if *id == unit.id => true,
+                    None => true,
+                    _ => false,
+                }
+            })
             .filter(|loot| predicate(*loot))
             .filter(|loot| loot.position.distance_to(&game.zone.current_center) <= game.zone.current_radius * 0.9)
-            .min_by_key(|loot| unit.position.distance_to(&loot.position) as i32);
+            .min_by_key(|loot| unit.position.distance_to(&loot.position) as i32)
+            .and_then(|loot| {
+                self.move_targets.entry(loot.id).or_insert(unit.id);
+                Some(loot)
+            });
 
         nearest_loot
             .filter(|loot| loot.position.distance_to(&unit.position) > self.constants.unit_radius)
@@ -379,13 +390,13 @@ impl MyStrategy {
             action_order: ActionOrder::Aim { shoot: true },
             description: Some(format!("shooting {} at {}", enemy.id, enemy.position.to_short_string())),
         })
-        .filter(|vec_order| {
-            let fire_target = self.simple_projected_position(enemy, unit);
-            self.position_is_hittable_by(&fire_target.into(), unit, &self.constants, debug_interface)
-        })
+            .filter(|vec_order| {
+                let fire_target = self.simple_projected_position(enemy, unit);
+                self.position_is_hittable_by(&fire_target.into(), unit, &self.constants, debug_interface)
+            })
     }
 
-    fn action_pick_up_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
+    fn action_pick_up_shield(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
         if unit.shield_potions >= self.constants.max_shield_potions_in_inventory {
             return None;
         }
@@ -396,7 +407,7 @@ impl MyStrategy {
         self.action_pick_up_loot(unit, game, &predicate, debug_interface)
     }
 
-    fn action_pick_up_ammo(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
+    fn action_pick_up_ammo(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
         let weapon_idx = unit.weapon? as usize;
         let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
         let weapon = self.constants.weapons.get(weapon_idx)?;
@@ -411,7 +422,7 @@ impl MyStrategy {
         self.action_pick_up_loot(unit, game, &predicate, debug_interface)
     }
 
-    fn action_pick_up_weapon(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
+    fn action_pick_up_weapon(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
         let (bow_idx, _) = self.constants.weapons.iter().enumerate().find(|(_, w)| w.name == "Bow").unwrap();
 
         match unit.weapon {
@@ -427,7 +438,7 @@ impl MyStrategy {
         }
     }
 
-    fn action_pick_up_loot(&self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
+    fn action_pick_up_loot(&mut self, unit: &Unit, game: &Game, predicate: &dyn Fn(&Loot) -> bool, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {
         if self.is_action_cooldown(unit) {
             return None;
         }
@@ -436,6 +447,7 @@ impl MyStrategy {
             .values()
             .filter(|loot| predicate(*loot))
             .find(|loot| loot.position.distance_to(&unit.position) <= self.constants.unit_radius)
+            .and_then(|loot| {self.move_targets.remove(&loot.id); Some(loot)})
             .map(|loot| ActionOrder::Pickup { loot: loot.id });
 
         order.map(|action_order| {
