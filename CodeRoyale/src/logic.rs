@@ -44,14 +44,18 @@ impl MyStrategy {
             .or_else(|| self.direction_hittable_enemy(unit, game, debug_interface));
         // .or_else(|| self.direction_look_around(unit, game, debug_interface));
 
-        if let Some(vec_order) = order {
+        let result = if let Some(vec_order) = order {
             if let Some(text) = vec_order.description {
                 self.place_label(unit.position, format!("dir: {}", text), 1, debug_interface);
             }
             vec_order.vec
         } else {
             unit.velocity
+        };
+        if let Some(debug) = debug_interface.as_mut() {
+            debug.add_segment(unit.position, result + unit.position, 0.1, Color::blue().a(0.7));
         }
+        result
     }
 
     pub fn get_action_order(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrder> {
@@ -297,6 +301,9 @@ impl MyStrategy {
     }
 
     fn velocity_continue_to_waypoint(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        if self.is_over_loot_move_target(unit, game) {
+            return None;
+        }
         let waypoint = self.waypoints.get(&unit.id)?;
 
         Some(Vec2Order {
@@ -324,6 +331,9 @@ impl MyStrategy {
     }
 
     fn velocity_go_to_somewhere_in_the_zone(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        if self.is_over_loot_move_target(unit, game) {
+            return None;
+        }
         let center = game.zone.next_center;
         let radius = game.zone.next_radius;
 
@@ -363,7 +373,10 @@ impl MyStrategy {
             .filter(|loot| loot.position.distance_to(&game.zone.current_center) <= game.zone.current_radius * 0.9)
             .min_by_key(|loot| unit.position.distance_to(&loot.position) as i32)
             .and_then(|loot| {
-                self.move_targets.entry(loot.id).or_insert(unit.id);
+                if !self.move_targets.contains_key(&loot.id) {
+                    // println!("adding move target {} for unit {}", loot.id, unit.id);
+                    self.move_targets.entry(loot.id).or_insert(unit.id);
+                }
                 Some(loot)
             });
 
@@ -464,13 +477,20 @@ impl MyStrategy {
             .values()
             .filter(|loot| predicate(*loot))
             .find(|loot| loot.position.distance_to(&unit.position) <= self.constants.unit_radius)
-            .and_then(|loot| {self.move_targets.remove(&loot.id); Some(loot)})
+            .and_then(|loot| {
+                // println!("removing move target {} for unit {}", loot.id, unit.id);
+                self.move_targets.remove(&loot.id);
+                Some(loot)
+            })
             .map(|loot| ActionOrder::Pickup { loot: loot.id });
 
+        if let Some(ActionOrder::Pickup {loot: loot_id }) = order {
+            self.seen_loot.remove(&loot_id);
+        }
         order.map(|action_order| {
             ActionOrderOrder {
+                description: Some(format!("picking up loot {:?}", action_order)),
                 action_order,
-                description: Some("picking up".to_string()),
             }
         })
     }
@@ -493,6 +513,14 @@ impl MyStrategy {
         } else {
             true
         }
+    }
+
+    fn is_over_loot_move_target(&self, unit: &Unit, game: &Game) -> bool {
+        self
+            .seen_loot
+            .values()
+            .filter(|loot| loot.position.distance_to(&unit.position) < self.constants.unit_radius)
+            .any(|loot| self.move_targets.contains_key(&loot.id) && *self.move_targets.get(&loot.id).unwrap() == unit.id)
     }
 
     pub fn angle_for_leading_shot(&self, enemy: &Unit, unit: &Unit, debug_interface: &mut Option<&mut DebugInterface>) -> f64 {
