@@ -1,6 +1,7 @@
 use super::*;
 use core::fmt;
 use std::f64::consts::PI;
+use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 /// 2 dimensional vector.
@@ -41,7 +42,7 @@ impl Vec2 {
     // if( cross > 0.0f)
     // turn right
     pub fn cross_product(&self, other: &Self) -> f64 {
-        return self.x * other.y - self.y * other.x
+        return self.x * other.y - self.y * other.x;
     }
 
     pub fn dot_product(&self, other: &Self) -> f64 {
@@ -163,6 +164,14 @@ impl Vec2 {
 
     pub fn to_short_string(&self) -> String {
         format!("({:.2},{:.2})", self.x, self.y)
+    }
+}
+
+impl Sum for Vec2 {
+    fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
+        let mut result = Vec2::zero();
+        iter.for_each(|v| result += v);
+        result
     }
 }
 

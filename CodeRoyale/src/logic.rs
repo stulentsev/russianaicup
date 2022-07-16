@@ -1,4 +1,5 @@
 use std::f64::consts::PI;
+use itertools::Itertools;
 use rand::Rng;
 use ai_cup_22::debugging::Color;
 use crate::{DebugInterface, MyStrategy};
@@ -25,6 +26,7 @@ impl MyStrategy {
             .or_else(|| self.velocity_go_to_shield(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_ammo(unit, game, debug_interface))
             .or_else(|| self.velocity_continue_to_waypoint(unit, game, debug_interface))
+            .or_else(|| self.velocity_go_closer_to_allies(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_somewhere_in_the_zone(unit, game, debug_interface));
 
         if let Some(vec_order) = order {
@@ -121,21 +123,20 @@ impl MyStrategy {
 
         // TODO: simulate complex movements (N velocities, M directions, K ticks), instead of traveling in a straight line
         let rotation_angle = (0..360)
-            .step_by(45)
+            .step_by(30)
             .map(|angle_degree| (angle_degree as f64).to_radians())
-            .max_by_key(|angle| {
+            .min_by_key(|angle| {
                 let unit_order = UnitOrder {
                     target_velocity: Vec2::from_length_and_angle(self.constants.max_unit_forward_speed, original_direction.angle()).rotate(*angle),
                     target_direction: unit.direction,
                     action: None,
                 };
                 let mut simulator = Simulator::new(game, &self.constants, unit.id, unit_order);
-                let result = simulator.simulate_n_ticks(self.constants.ticks_per_second as usize);
-                // TODO: prefer positions away from enemy
                 // TODO: prefer positions behind an obstacle
-                let score = result.score();
-                // println!("angle {}, score {}", angle.to_degrees(), score);
-                score
+                // let n_ticks = self.constants.ticks_per_second as usize;
+                let n_ticks = 10;
+                let result = simulator.simulate_n_ticks(n_ticks);
+                result
             });
 
         rotation_angle.map(|angle| {
@@ -301,6 +302,22 @@ impl MyStrategy {
         Some(Vec2Order {
             vec: *waypoint - unit.position,
             description: Some("going to waypoint".to_string()),
+        }).and_then(|vec_order| {
+            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
+        })
+    }
+
+    fn velocity_go_closer_to_allies(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        let allies = game.units.iter().filter(|u| u.player_id == unit.player_id).filter(|u| u.id != unit.id).collect_vec();
+        if allies.len() == 1 {
+            return None;
+        }
+
+        let center: Vec2 = allies.iter().map(|u| u.position).sum();
+
+        Some(Vec2Order {
+            vec: center - unit.position,
+            description: Some("going to closer to allies".to_string()),
         }).and_then(|vec_order| {
             self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
         })

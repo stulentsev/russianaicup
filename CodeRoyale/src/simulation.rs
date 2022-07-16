@@ -1,4 +1,4 @@
-use std::cmp::max;
+use std::cmp::{max, Ordering};
 use std::f64::consts::{FRAC_PI_2, PI};
 use itertools::Itertools;
 use ai_cup_22::debugging::Color;
@@ -6,14 +6,26 @@ use ai_cup_22::model::*;
 use crate::{DebugInterface, MyStrategy};
 use crate::simulatable_model::*;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub struct SimulationResult {
     pub damage_received: f64,
+    pub avg_distance_to_enemies: f64,
 }
 
-impl SimulationResult {
-    pub fn score(&self) -> i32 {
-        -self.damage_received as i32
+impl Eq for SimulationResult {}
+
+impl PartialOrd<Self> for SimulationResult {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        (self.damage_received, -self.avg_distance_to_enemies).partial_cmp(&(other.damage_received, other.avg_distance_to_enemies))
+    }
+}
+
+impl Ord for SimulationResult {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.damage_received.total_cmp(&other.damage_received) {
+            Ordering::Equal => other.avg_distance_to_enemies.total_cmp(&self.avg_distance_to_enemies),
+            other => other,
+        }
     }
 }
 
@@ -43,6 +55,8 @@ impl Simulator {
         for _ in 0..n {
             self.simulate_tick();
         }
+
+        self.calc_distance_to_enemies();
         self.result.clone()
     }
 
@@ -199,9 +213,9 @@ impl Simulator {
 
             let angle_a = (offset.arg() - orig_v.arg()).abs();
             if f64_approx_eq(angle_a, 0.0) {
-                return max_unit_forward_speed
-            } else if f64_approx_eq(angle_a,PI) {
-                return max_unit_backward_speed
+                return max_unit_forward_speed;
+            } else if f64_approx_eq(angle_a, PI) {
+                return max_unit_backward_speed;
             }
 
             // println!("angle_a {}", angle_a.to_degrees());
@@ -222,12 +236,20 @@ impl Simulator {
             v_len
         }
     }
+
+    fn calc_distance_to_enemies(&mut self) {
+        if let Some(me) = self.unit() {
+            let enemies = self.game.units.iter().filter(|u| u.player_id != me.player_id).collect_vec();
+            let total_distance: f64 = enemies.iter().map(|u| u.position.distance_to(&me.position)).sum();
+            self.result.avg_distance_to_enemies = total_distance / enemies.len() as f64;
+        }
+    }
 }
 
 impl MyStrategy {
     pub fn check_expected_position_vs_actual(&mut self, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) {
         if debug_interface.is_none() {
-            return
+            return;
         }
 
         for unit in self.my_units.iter() {
@@ -277,6 +299,7 @@ impl MyStrategy {
         }
     }
 }
+
 pub fn f64_approx_eq(left: f64, right: f64) -> bool {
     let factor = 10f64.powi(7);
     (left * factor).trunc() == (right * factor).trunc()
