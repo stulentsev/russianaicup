@@ -220,7 +220,7 @@ impl Simulator {
 
             // println!("angle_a {}", angle_a.to_degrees());
             if angle_a.is_nan() {
-                println!("offset: {}, orig_v: {}", offset, orig_v);
+                // println!("offset: {}, orig_v: {}", offset, orig_v);
             }
 
             let sin_b = d * angle_a.sin() / r;
