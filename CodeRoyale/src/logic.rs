@@ -345,9 +345,13 @@ impl MyStrategy {
 
         let closest_unit = self.enemy_units.iter().min_by_key(|enemy| (enemy.position.distance_to(&unit.position) * 10f64.powi(9)) as i64);
         closest_unit.map(|enemy| {
-            let vec = enemy.position - unit.position;
+            let dist = enemy.position - unit.position;
+            let vec = Vec2::from_length_and_angle(
+                dist.length() - enemy.weapon_range(&self.constants),
+                dist.angle()
+            );
             Vec2Order{
-                vec: vec * (vec.length() - enemy.weapon_range(&self.constants)) / vec.length(),
+                vec: vec.clamp_min(6.0),
                 description: Some(format!("closing in on {}", enemy.id)),
             }
         })
@@ -434,7 +438,7 @@ impl MyStrategy {
             .filter(|loot| loot.position.distance_to(&unit.position) > self.constants.unit_radius)
             .map(|loot| {
                 Vec2Order {
-                    vec: (loot.position - unit.position).clamp_min(3.0),
+                    vec: (loot.position - unit.position).clamp_min(6.0),
                     description: Some("going to loot".to_string()),
                 }
             })
