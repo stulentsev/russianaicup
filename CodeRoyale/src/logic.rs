@@ -26,6 +26,7 @@ impl MyStrategy {
             .or_else(|| self.velocity_go_to_weapon(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_shield(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_ammo(unit, game, debug_interface))
+            .or_else(|| self.velocity_close_in_on_an_enemy(unit, game, debug_interface))
             .or_else(|| self.velocity_continue_to_waypoint(unit, game, debug_interface))
             .or_else(|| self.velocity_go_closer_to_allies(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_somewhere_in_the_zone(unit, game, debug_interface));
@@ -331,6 +332,22 @@ impl MyStrategy {
             matches!(loot.item, Item::Ammo{weapon_type_index: i, ..} if i as usize == weapon_idx || i as usize == bow_idx)
         };
         self.velocity_go_to_loot(unit, game, &predicate, debug_interface)
+    }
+
+    fn velocity_close_in_on_an_enemy(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        // if has someone within weapon range already
+        if self.enemy_units.iter().any(|enemy| enemy.position.distance_to(&unit.position) <= unit.weapon_range(&self.constants)) {
+            return None
+        }
+
+        let closest_unit = self.enemy_units.iter().min_by_key(|enemy| (enemy.position.distance_to(&unit.position) * 10f64.powi(9)) as i64);
+        closest_unit.map(|enemy| {
+            let vec = enemy.position - unit.position;
+            Vec2Order{
+                vec: vec * (vec.length() - enemy.weapon_range(&self.constants)) / vec.length(),
+                description: Some(format!("closing in on {}", enemy.id)),
+            }
+        })
     }
 
     fn velocity_continue_to_waypoint(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
