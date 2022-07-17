@@ -63,6 +63,7 @@ impl MyStrategy {
             }
 
             self.visualize_sounds(unit, game, &mut debug_interface);
+            self.visualize_weapon_ranges(game, &mut debug_interface);
             self.visualize_projectiles(game, &mut debug_interface);
             self.visualize_waypoint(unit, &mut debug_interface);
             self.clear_waypoint_if_in_storm(unit, game);

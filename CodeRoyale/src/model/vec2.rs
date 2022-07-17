@@ -2,7 +2,7 @@ use super::*;
 use core::fmt;
 use std::f64::consts::PI;
 use std::iter::Sum;
-use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// 2 dimensional vector.
 #[derive(Clone, Debug, Copy)]
@@ -167,14 +167,6 @@ impl Vec2 {
     }
 }
 
-impl Sum for Vec2 {
-    fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
-        let mut result = Vec2::zero();
-        iter.for_each(|v| result += v);
-        result
-    }
-}
-
 impl trans::Trans for Vec2 {
     fn write_to(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
         self.x.write_to(writer)?;
@@ -238,6 +230,13 @@ impl Mul<f64> for Vec2 {
     }
 }
 
+impl MulAssign<f64> for Vec2 {
+    fn mul_assign(&mut self, factor: f64) {
+        self.x *= factor;
+        self.y *= factor;
+    }
+}
+
 impl Div<f64> for Vec2 {
     type Output = Self;
     fn div(self, factor: f64) -> Self::Output {
@@ -245,5 +244,12 @@ impl Div<f64> for Vec2 {
             x: self.x / factor,
             y: self.y / factor,
         }
+    }
+}
+
+impl DivAssign<f64> for Vec2 {
+    fn div_assign(&mut self, factor: f64) {
+        self.x /= factor;
+        self.y /= factor;
     }
 }

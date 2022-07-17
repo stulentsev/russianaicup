@@ -84,6 +84,17 @@ impl Unit {
 
         LootPriority::Whatever
     }
+
+    pub fn weapon_range(&self, constants: &Constants) -> f64 {
+        match self.get_weapon(constants) {
+            None => 0.0,
+            Some(weapon) => weapon.range()
+        }
+    }
+
+    pub fn get_weapon<'a>(&self, constants: &'a Constants) -> Option<&'a WeaponProperties> {
+        Some(&constants.weapons[self.weapon? as usize])
+    }
 }
 
 impl trans::Trans for Unit {

@@ -22,6 +22,7 @@ impl MyStrategy {
     pub fn get_velocity(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Vec2 {
         let order = None
             .or_else(|| self.velocity_avoid_projectiles(unit, game, debug_interface))
+            .or_else(|| self.velocity_move_out_of_fire_range(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_weapon(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_shield(unit, game, debug_interface))
             .or_else(|| self.velocity_go_to_ammo(unit, game, debug_interface))
@@ -149,6 +150,38 @@ impl MyStrategy {
                 vec: velocity,
                 description: Some(format!("avoiding damage, going to {}", (unit.position + velocity).to_short_string())),
             }
+        })
+    }
+
+    fn velocity_move_out_of_fire_range(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        let units_that_can_hit_me = self
+            .enemy_units
+            .iter()
+            .filter(|enemy| enemy.position.distance_to(&unit.position) <= enemy.weapon_range(&self.constants));
+        let velocities_to_move_away = units_that_can_hit_me.map(|enemy| unit.position - enemy.position).collect_vec();
+        if velocities_to_move_away.is_empty() {
+            return None;
+        }
+
+        // println!("velocities to move away: {:?}", velocities_to_move_away);
+        let mut resulting_velocity = Vec2::zero();
+        velocities_to_move_away.iter().for_each(|v| resulting_velocity += *v);
+        resulting_velocity /= velocities_to_move_away.len() as f64;
+        resulting_velocity = resulting_velocity.clamp(self.constants.max_unit_forward_speed);
+
+        let position_after_1_tick = unit.position + resulting_velocity / self.constants.ticks_per_second;
+        if position_after_1_tick.distance_to(&game.zone.current_center) > game.zone.current_radius {
+            println!("would go in the zone, not moving out of range");
+            return None;
+        }
+
+        // println!("resulting velocity: {:?}", resulting_velocity);
+        if let Some(debug) = debug_interface.as_mut() {
+            debug.add_segment(unit.position, unit.position + resulting_velocity, 0.1, Color::green());
+        }
+        Some(Vec2Order{
+            vec: resulting_velocity,
+            description: Some("moving out of fire range".to_string()),
         })
     }
 
@@ -320,7 +353,9 @@ impl MyStrategy {
             return None;
         }
 
-        let center: Vec2 = allies.iter().map(|u| u.position).sum();
+        let mut center = Vec2::zero();
+        allies.iter().for_each(|u| center += u.position);
+        center /= allies.len() as f64;
 
         Some(Vec2Order {
             vec: center - unit.position,
@@ -371,6 +406,7 @@ impl MyStrategy {
             })
             .filter(|loot| predicate(*loot))
             .filter(|loot| loot.position.distance_to(&game.zone.current_center) <= game.zone.current_radius * 0.9)
+            .filter(|loot| !self.enemy_units.iter().any(|enemy| enemy.position.distance_to(&loot.position) <= enemy.weapon_range(&self.constants)))
             .min_by_key(|loot| unit.position.distance_to(&loot.position) as i32)
             .and_then(|loot| {
                 if !self.move_targets.contains_key(&loot.id) {
@@ -484,7 +520,7 @@ impl MyStrategy {
             })
             .map(|loot| ActionOrder::Pickup { loot: loot.id });
 
-        if let Some(ActionOrder::Pickup {loot: loot_id }) = order {
+        if let Some(ActionOrder::Pickup { loot: loot_id }) = order {
             self.seen_loot.remove(&loot_id);
         }
         order.map(|action_order| {

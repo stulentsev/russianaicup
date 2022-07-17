@@ -14,9 +14,6 @@ impl MyStrategy {
         debug_interface.set_auto_flush(false);
         let state = debug_interface.get_state();
 
-        // self.show_weapon_ranges(debug_interface);
-        // self.show_vision_ranges(debug_interface);
-
         let unit_under_cursor = self
             .enemy_units
             .iter()
@@ -30,7 +27,6 @@ impl MyStrategy {
                 let fire_target = self.simple_projected_position(unit, mu);
                 debug_interface.add_ring(fire_target, self.constants.unit_radius, 0.1, Color::blue().a(0.4));
                 debug_interface.add_segment(mu.position, fire_target, 0.1, Color::red());
-
             }
             let text = format!(
                 "unit {}, hittable: {}",
@@ -85,19 +81,27 @@ impl MyStrategy {
         }
     }
 
-    fn show_weapon_ranges(&self, debug_interface: &mut DebugInterface) {
-        for my_unit in self.my_units.iter() {
-            if let Some(weapon_idx) = my_unit.weapon {
-                let weapon: &WeaponProperties = &self.constants.weapons[weapon_idx as usize];
-                let look_angle = my_unit.direction.angle();
+    pub fn visualize_weapon_ranges(&self, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) {
+        for unit in game.units.iter() {
+            if let Some(weapon) = unit.get_weapon(&self.constants) {
+                let range = weapon.range();
+                let look_angle = unit.direction.angle();
 
-                debug_interface.add_pie(
-                    my_unit.position,
-                    weapon.projectile_life_time * weapon.projectile_speed,
-                    look_angle - weapon.aim_field_of_view.to_radians() / 2.0,
-                    look_angle + weapon.aim_field_of_view.to_radians() / 2.0,
-                    Color::red().a(0.1),
-                )
+                if let Some(debug) = debug_interface.as_mut() {
+                    debug.add_pie(
+                        unit.position,
+                        range,
+                        look_angle - weapon.aim_field_of_view.to_radians() / 2.0,
+                        look_angle + weapon.aim_field_of_view.to_radians() / 2.0,
+                        Color::red().a(0.07),
+                    );
+
+                    debug.add_circle(
+                        unit.position,
+                        range,
+                        Color::red().a(0.03)
+                    )
+                }
             }
         }
     }
@@ -109,10 +113,11 @@ impl MyStrategy {
         }
     }
 
+
     pub fn place_label(&self, position: Vec2, text: String, line: usize, debug_interface: &mut Option<&mut DebugInterface>) {
         let offset_y = line as f64 * 0.8;
         if let Some(debug) = debug_interface.as_mut() {
-            debug.add_placed_text(position, text, Vec2{x: 0.0, y: offset_y}, 1.3, Color::blue());
+            debug.add_placed_text(position, text, Vec2 { x: 0.0, y: offset_y }, 1.3, Color::blue());
         }
     }
 
@@ -130,5 +135,4 @@ impl MyStrategy {
             }
         }
     }
-
 }
