@@ -65,6 +65,7 @@ impl Simulator {
         // self.simulate_action();
         self.simulate_movement();
         self.simulate_projectile_movement();
+        self.simulate_zone_damage();
         // self.remove_dead_players();
         // self.regen_health();
     }
@@ -133,6 +134,18 @@ impl Simulator {
 
         self.game.projectiles = self.game.projectiles.iter().filter(|p| p.life_time > 0.0).cloned().collect();
         self.game.units = self.game.units.iter().filter(|u| u.health > 0.0).cloned().collect();
+    }
+
+    fn simulate_zone_damage(&mut self) {
+        for unit in self.game.units.iter_mut() {
+            if unit.position.distance_to(&self.game.zone.current_center) >= self.game.zone.current_radius - self.constants.unit_radius {
+                let zone_damage = self.constants.zone_damage_per_second / self.constants.ticks_per_second;
+                unit.health -= zone_damage;
+                if unit.id == self.unit_id {
+                    self.result.damage_received += zone_damage;
+                }
+            }
+        }
     }
 
     fn simulate_next_direction(&self, unit: &SimUnit, target_direction: Vec2) -> Vec2 {

@@ -29,7 +29,10 @@ impl MyStrategy {
             .or_else(|| self.velocity_close_in_on_an_enemy(unit, game, debug_interface))
             .or_else(|| self.velocity_continue_to_waypoint(unit, game, debug_interface))
             .or_else(|| self.velocity_go_closer_to_allies(unit, game, debug_interface))
-            .or_else(|| self.velocity_go_to_somewhere_in_the_zone(unit, game, debug_interface));
+            .or_else(|| self.velocity_go_to_somewhere_in_the_zone(unit, game, debug_interface))
+            .and_then(|vec_order| {
+                self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
+            });
 
         if let Some(vec_order) = order {
             if let Some(text) = vec_order.description {
@@ -172,7 +175,7 @@ impl MyStrategy {
 
         let position_after_1_tick = unit.position + resulting_velocity / self.constants.ticks_per_second;
         if position_after_1_tick.distance_to(&game.zone.current_center) > game.zone.current_radius {
-            println!("would go in the zone, not moving out of range");
+            // println!("would go in the zone, not moving out of range");
             return None;
         }
 
@@ -359,8 +362,6 @@ impl MyStrategy {
         Some(Vec2Order {
             vec: *waypoint - unit.position,
             description: Some("going to waypoint".to_string()),
-        }).and_then(|vec_order| {
-            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
         })
     }
 
@@ -377,8 +378,6 @@ impl MyStrategy {
         Some(Vec2Order {
             vec: center - unit.position,
             description: Some("going to closer to allies".to_string()),
-        }).and_then(|vec_order| {
-            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
         })
     }
 
@@ -402,8 +401,6 @@ impl MyStrategy {
         Some(Vec2Order {
             vec: random_point - unit.position,
             description: Some("going to a random point".to_string()),
-        }).and_then(|vec_order| {
-            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
         })
     }
 
@@ -440,9 +437,7 @@ impl MyStrategy {
                     vec: (loot.position - unit.position).clamp_min(3.0),
                     description: Some("going to loot".to_string()),
                 }
-            }).and_then(|vec_order| {
-            self.velocity_steer_around_obstacles(unit, vec_order, game, debug_interface)
-        })
+            })
     }
 
     fn action_drink_shield(&self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<ActionOrderOrder> {

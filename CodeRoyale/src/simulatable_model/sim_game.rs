@@ -1,4 +1,4 @@
-use crate::model::{Game, Unit, Projectile};
+use crate::model::*;
 use super::*;
 
 pub struct SimGame {
@@ -6,6 +6,7 @@ pub struct SimGame {
     pub current_tick: i32,
     pub units: Vec<SimUnit>,
     pub projectiles: Vec<SimProjectile>,
+    pub zone: Zone,
 }
 
 impl SimGame {
@@ -15,6 +16,7 @@ impl SimGame {
             current_tick: game.current_tick,
             units: game.units.iter().map(|u| u.into()).collect(),
             projectiles: game.projectiles.iter().map(|p| p.into()).collect(),
+            zone: game.zone.clone(),
         }
     }
 
