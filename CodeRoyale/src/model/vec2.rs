@@ -64,6 +64,8 @@ impl Vec2 {
     }
 
     pub fn angle(&self) -> f64 {
+        // const angle = Math.atan2(vec.y, vec.x);
+        // return angle < 0 ? Math.PI * 2 + angle : angle;
         let res = (self.x / self.length()).acos();
         if self.y >= 0.0 {
             res
