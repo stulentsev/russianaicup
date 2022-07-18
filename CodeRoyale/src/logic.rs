@@ -6,6 +6,7 @@ use crate::{DebugInterface, MyStrategy};
 use ai_cup_22::model::*;
 use crate::simulation::Simulator;
 
+#[derive(Debug)]
 struct Vec2Order {
     vec: Vec2,
     description: Option<String>,
@@ -143,8 +144,8 @@ impl MyStrategy {
                 let mut simulator = Simulator::new(game, &self.constants, unit.id, unit_order);
                 // TODO: prefer positions behind an obstacle
                 // let n_ticks = self.constants.ticks_per_second as usize;
-                let n_ticks = 10;
-                let result = simulator.simulate_n_ticks(n_ticks);
+                let n_ticks = 15;
+                let result = simulator.simulate_n_ticks(n_ticks, debug_interface);
                 result
             });
 
@@ -190,6 +191,7 @@ impl MyStrategy {
     }
 
     fn velocity_steer_around_obstacles(&self, unit: &Unit, vec_order: Vec2Order, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
+        assert!(vec_order.vec.x.is_finite(), "vec_order.vec.x was infinite ({:?})", vec_order);
         let delta_time = 1.0 / self.constants.ticks_per_second;
         let mut t = 0;
         let mut max_t = 10;
@@ -371,7 +373,7 @@ impl MyStrategy {
 
     fn velocity_go_closer_to_allies(&mut self, unit: &Unit, game: &Game, debug_interface: &mut Option<&mut DebugInterface>) -> Option<Vec2Order> {
         let allies = game.units.iter().filter(|u| u.player_id == unit.player_id).filter(|u| u.id != unit.id).collect_vec();
-        if allies.len() == 1 {
+        if allies.len() < 2 {
             return None;
         }
 
@@ -381,7 +383,7 @@ impl MyStrategy {
 
         Some(Vec2Order {
             vec: center - unit.position,
-            description: Some("going to closer to allies".to_string()),
+            description: Some("going closer to allies".to_string()),
         })
     }
 

@@ -1,4 +1,5 @@
 use std::cmp::{max, Ordering};
+use std::collections::HashSet;
 use std::f64::consts::{FRAC_PI_2, PI};
 use itertools::Itertools;
 use ai_cup_22::debugging::Color;
@@ -35,6 +36,7 @@ pub struct Simulator {
     unit_order: UnitOrder,
     constants: Constants,
     result: SimulationResult,
+    units_received_damage: HashSet<i32>,
 }
 
 impl Simulator {
@@ -45,29 +47,42 @@ impl Simulator {
             unit_order,
             constants: constants.clone(),
             result: Default::default(),
+            units_received_damage: HashSet::new(),
         }
     }
 
     pub fn unit(&self) -> Option<SimUnit> {
         self.game.units.iter().find(|u| u.id == self.unit_id).cloned()
     }
-    pub fn simulate_n_ticks(&mut self, n: usize) -> SimulationResult {
+
+    pub fn simulate_n_ticks(&mut self, n: usize, debug_interface: &mut Option<&mut DebugInterface>) -> SimulationResult {
         for _ in 0..n {
-            self.simulate_tick();
+            self.simulate_tick(debug_interface);
         }
 
         self.calc_distance_to_enemies();
         self.result.clone()
     }
 
-    pub fn simulate_tick(&mut self) {
+    pub fn simulate_tick(&mut self, debug_interface: &mut Option<&mut DebugInterface>) {
         self.simulate_rotation();
         // self.simulate_action();
-        self.simulate_movement();
+        self.simulate_movement(debug_interface);
         self.simulate_projectile_movement();
         self.simulate_zone_damage();
         // self.remove_dead_players();
         // self.regen_health();
+
+        if let Some(debug) = debug_interface {
+            for unit in self.game.units.iter() {
+                let color = if self.units_received_damage.contains(&unit.id) {
+                    Color::red()
+                } else {
+                    Color::blue()
+                };
+                debug.add_ring(unit.position, 0.7, 0.05, color.a(0.7));
+            }
+        }
     }
 
     // fn simulate_rotation(&mut self) {
@@ -91,7 +106,7 @@ impl Simulator {
         }
     }
 
-    fn simulate_movement(&mut self) {
+    fn simulate_movement(&mut self, debug_interface: &mut Option<&mut DebugInterface>) {
         let positions = self.game.units.iter().map(|unit| {
             let velocity = if unit.id == self.unit_id {
                 self.unit_order.target_velocity
@@ -129,6 +144,7 @@ impl Simulator {
                 if unit.player_id == self.game.my_id {
                     self.result.damage_received += weapon.projectile_damage;
                 }
+                self.units_received_damage.insert(unit.id);
             }
         }
 
@@ -179,6 +195,7 @@ impl Simulator {
         let delta_velocity = (target_velocity - unit.velocity).clamp(self.constants.unit_acceleration * delta_time);
 
         let velocity = unit.velocity + delta_velocity;
+
         let mut position = unit.position + velocity * delta_time;
         let collision = self.constants.obstacles.iter().find(|o| {
             o.position.distance_to(&position) <= o.radius + self.constants.unit_radius
@@ -297,9 +314,9 @@ impl MyStrategy {
         }
     }
 
-    pub fn predict_next_positions(&mut self, game: &Game, unit: &Unit, unit_order: &UnitOrder) {
+    pub fn predict_next_positions(&mut self, game: &Game, unit: &Unit, unit_order: &UnitOrder, debug_interface: &mut Option<&mut DebugInterface>) {
         let mut simulation = Simulator::new(game, &self.constants, unit.id, unit_order.clone());
-        simulation.simulate_tick();
+        simulation.simulate_tick(debug_interface);
         if let Some(sim_unit) = simulation.unit() {
             self.next_positions
                 .entry(unit.id)

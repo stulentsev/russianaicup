@@ -85,7 +85,7 @@ impl MyStrategy {
                 action,
             };
 
-            self.predict_next_positions(game, unit, &unit_order);
+            self.predict_next_positions(game, unit, &unit_order, &mut debug_interface);
             orders.insert(unit.id, unit_order);
         }
         if let Some(debug) = debug_interface.as_mut() {
