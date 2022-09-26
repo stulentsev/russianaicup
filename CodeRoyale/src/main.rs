@@ -14,6 +14,10 @@ mod visibility;
 pub use visibility::*;
 mod basic_game_entity;
 pub use basic_game_entity::*;
+mod geometry;
+pub use geometry::*;
+
+pub use basic_game_entity::*;
 
 use debug_interface::DebugInterface;
 use my_strategy::MyStrategy;

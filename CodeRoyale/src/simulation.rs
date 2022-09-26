@@ -4,7 +4,7 @@ use std::f64::consts::{FRAC_PI_2, PI};
 use itertools::Itertools;
 use ai_cup_22::debugging::Color;
 use ai_cup_22::model::*;
-use crate::{DebugInterface, MyStrategy};
+use crate::{calculate_circle_line, DebugInterface, MyStrategy};
 use crate::simulatable_model::*;
 
 #[derive(Default, Clone, PartialEq)]
@@ -200,6 +200,18 @@ impl Simulator {
         let collision = self.constants.obstacles.iter().find(|o| {
             o.position.distance_to(&position) <= o.radius + self.constants.unit_radius
         });
+
+        // let collision = self.constants.obstacles.iter().find_map(|o| {
+        //     calculate_circle_line(o.position, o.radius, unit.position, position)
+        // });
+
+        // * считаем точку столкновения с кругом, пусть это pt
+        // * считаем вектор obstacle.center - pt - это нормаль
+        // * поворачиваем вектор на 90 градусов влево (или вправо, в зависимости от того с какой стороны столкнулись с препятствием), это вектор касательной, назовем его m
+        // * считаем k = dot(v, m) / dot(m, m); v_new = m * k; (где v - изначальная скорость юнита до столкновения), это проекция вектора скорости на касательную = новый вектор скорости, по которому будет двигаться юнит после столкновения
+        //
+        // PS. dot - скалярное произведение векторов
+
 
         if let Some(obs) = collision {
             let pushback_length = obs.radius + self.constants.unit_radius - obs.position.distance_to(&position);

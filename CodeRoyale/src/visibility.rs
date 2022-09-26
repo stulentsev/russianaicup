@@ -26,7 +26,6 @@ impl VisibilitySector {
 }
 
 impl MyStrategy {
-
     pub fn unit_visibility_sector(&self, unit: &Unit) -> VisibilitySector {
         let view_distance = self.constants.view_distance;
         let field_of_view = self.constants.field_of_view;

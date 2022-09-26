@@ -4,7 +4,7 @@
     "Create": {
       "Override": {
         "continue_until": "BotsOnly",
-        "preset": "Round2"
+        "preset": "Finals"
       }
     }
   },
